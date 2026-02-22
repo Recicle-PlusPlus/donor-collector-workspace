@@ -21,6 +21,7 @@ export interface InputIconProps {
   secureTextEntry?: boolean;
   errorMsg?: string | null;
   keyboardType?: KeyboardTypeOptions;
+  editable?: boolean;
 
   baseColor?: string;
   textColor?: string;
@@ -41,6 +42,7 @@ export const InputIcon = ({
   baseColor = '#757575',
   textColor = colors.text,
   errorColor = colors.error,
+  editable = true,
 }: InputIconProps) => {
   // Mantemos o estado interno para o botão de visualização de senha
   const [isSecure, setIsSecure] = useState(secureTextEntry);
@@ -64,6 +66,7 @@ export const InputIcon = ({
           style={[styles.input, { color: textColor }]}
           onChangeText={onChangeText}
           value={value}
+          editable={editable}
           placeholder={placeholder}
           placeholderTextColor={baseColor}
           keyboardType={keyboardType}

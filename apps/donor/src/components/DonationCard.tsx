@@ -8,7 +8,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '@workspace/ui';
 import { RootStackParamList } from '../navigation';
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
 export const DonationCard = ({ item }: { item: any }) => {
   const navigation = useNavigation<NavigationProp>();

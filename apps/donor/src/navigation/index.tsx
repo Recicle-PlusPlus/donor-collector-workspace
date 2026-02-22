@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { Loading } from '@workspace/ui';
 
+import { MainTabs } from './MainTabs';
 import { Login } from '../screens/auth/Login';
 import { Home } from '../screens/app/Home';
 import { Sign } from '../screens/auth/Sign';
@@ -16,7 +17,7 @@ import { DonationStep2 } from '../screens/app/DonationStep2';
 export type RootStackParamList = {
   Login: undefined;
   Sign: undefined;
-  Home: { refresh?: boolean; snackbarMessage?: string } | undefined;
+  Main: { refresh?: boolean; snackbarMessage?: string } | undefined;
   DonationDetails: { donationId: string };
   DonationStep1: undefined;
   DonationStep2: { address: any; materials: any[] };
@@ -38,7 +39,7 @@ export function RootNavigator() {
         {user ? (
           // Usuário logado
           <Stack.Group>
-            <Stack.Screen name="Home" component={Home} />
+            <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen
               name="DonationDetails"
               component={DonationDetailsScreen}

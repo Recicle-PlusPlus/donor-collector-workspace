@@ -21,12 +21,13 @@ import { useGetRecentDonations } from '../../hooks/useGetRecentDonations';
 import { HomeHeader } from '../../components/HomeHeader';
 import { StatisticItem } from '../../components/StatisticItem';
 import { DonationCard } from '../../components/DonationCard';
+import { supabase } from '@workspace/db/src/client';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
-  'Home'
+  'Main'
 >;
-type HomeScreenRouteProp = RouteProp<RootStackParamList, 'Home'>;
+type HomeScreenRouteProp = RouteProp<RootStackParamList, 'Main'>;
 
 export function Home() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -34,10 +35,9 @@ export function Home() {
   const { user } = useAuth();
 
   const donorId = user?.id;
-  const donorName = user?.user_metadata?.name || 'Doador';
-  const userPhotoUrl = user?.user_metadata?.photo_url
-    ? { uri: user?.user_metadata?.photo_url }
-    : null;
+
+  const [donorName, setDonorName] = useState('Doador');
+  const [userPhotoUrl, setUserPhotoUrl] = useState<any>(null);
 
   const {
     statistics,
@@ -54,11 +54,24 @@ export function Home() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (route.params?.refresh) {
-      refetch();
-      navigation.setParams({ refresh: false });
+    async function loadHeaderData() {
+      if (!user) return;
+
+      const { data: profileData } = await supabase
+        .from('users')
+        .select('name, photo_url')
+        .eq('id', user.id)
+        .single();
+
+      if (profileData) {
+        setDonorName(profileData.name || 'Doador');
+        if (profileData.photo_url) {
+          setUserPhotoUrl({ uri: profileData.photo_url });
+        }
+      }
     }
-  }, [route.params?.refresh, navigation, refetch]);
+    loadHeaderData();
+  }, [user]);
 
   if (donationsLoading && !donations.length) {
     return <Loading message="Carregando dados..." />;

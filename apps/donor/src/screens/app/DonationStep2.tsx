@@ -81,7 +81,7 @@ export function DonationStep2() {
       });
     } else {
       // Dispara a navegação para a Home com a flag de refresh
-      navigation.navigate('Home', {
+      navigation.navigate('Main', {
         refresh: true,
         snackbarMessage: 'Coleta agendada com sucesso!',
       });

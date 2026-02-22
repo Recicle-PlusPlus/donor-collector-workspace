@@ -61,7 +61,7 @@ export function DonationDetailsScreen() {
               );
             } else {
               // Retorna para a Home passando o refresh
-              navigation.navigate('Home', {
+              navigation.navigate('Main', {
                 refresh: true,
                 snackbarMessage: 'Coleta cancelada com sucesso!',
               });

@@ -25,6 +25,8 @@ export interface InputIconMaskProps {
   baseColor?: string;
   textColor?: string;
   errorColor?: string;
+  editable?: boolean;
+  onBlur?: () => void;
 }
 
 export const InputIconMask = ({
@@ -42,6 +44,8 @@ export const InputIconMask = ({
   baseColor = colors.textSecondary,
   textColor = colors.text,
   errorColor = colors.error,
+  editable = true,
+  onBlur,
 }: InputIconMaskProps) => {
   const [isSecure, setIsSecure] = useState(secureTextEntry);
 
@@ -70,6 +74,8 @@ export const InputIconMask = ({
           keyboardType={keyboardType}
           secureTextEntry={isSecure}
           autoCapitalize="none"
+          editable={editable}
+          onBlur={onBlur}
         />
 
         {icon && (
