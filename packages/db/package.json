@@ -1,0 +1,11 @@
+{
+  "name": "@workspace/db",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "private": true,
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^1.x.x",
+    "@supabase/supabase-js": "^2.x.x",
+    "react-native-url-polyfill": "^2.0.0"
+  }
+}

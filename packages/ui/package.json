@@ -1,0 +1,9 @@
+{
+  "name": "@workspace/ui",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "private": true,
+  "dependencies": {
+    "react-native-mask-text": "^0.15.0"
+  }
+}
