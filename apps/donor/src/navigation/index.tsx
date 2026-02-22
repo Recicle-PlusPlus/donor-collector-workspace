@@ -8,13 +8,14 @@ import { Loading } from '@workspace/ui';
 import { Login } from '../screens/auth/Login';
 import { Home } from '../screens/app/Home';
 import { Sign } from '../screens/auth/Sign';
+import { DonationDetailsScreen } from '../screens/app/DonationDetails';
 
 // Tipagem das rotas
 export type RootStackParamList = {
   Login: undefined;
   Sign: undefined;
-  Home: undefined;
-  DonationDetails: undefined;
+  Home: { refresh?: boolean; snackbarMessage?: string } | undefined;
+  DonationDetails: { donationId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -34,7 +35,10 @@ export function RootNavigator() {
           // Usuário logado
           <Stack.Group>
             <Stack.Screen name="Home" component={Home} />
-            {/* Outras telas como Profile, Chat, virão aqui */}
+            <Stack.Screen
+              name="DonationDetails"
+              component={DonationDetailsScreen}
+            />
           </Stack.Group>
         ) : (
           // Usuário não logado
