@@ -9,6 +9,8 @@ import { Login } from '../screens/auth/Login';
 import { Home } from '../screens/app/Home';
 import { Sign } from '../screens/auth/Sign';
 import { DonationDetailsScreen } from '../screens/app/DonationDetails';
+import { DonationStep1 } from '../screens/app/DonationStep1';
+import { DonationStep2 } from '../screens/app/DonationStep2';
 
 // Tipagem das rotas
 export type RootStackParamList = {
@@ -16,6 +18,8 @@ export type RootStackParamList = {
   Sign: undefined;
   Home: { refresh?: boolean; snackbarMessage?: string } | undefined;
   DonationDetails: { donationId: string };
+  DonationStep1: undefined;
+  DonationStep2: { address: any; materials: any[] };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -38,6 +42,16 @@ export function RootNavigator() {
             <Stack.Screen
               name="DonationDetails"
               component={DonationDetailsScreen}
+            />
+            <Stack.Screen
+              name="DonationStep1"
+              component={DonationStep1}
+              options={{ title: 'Nova Coleta' }}
+            />
+            <Stack.Screen
+              name="DonationStep2"
+              component={DonationStep2}
+              options={{ title: 'Agendamento' }}
             />
           </Stack.Group>
         ) : (

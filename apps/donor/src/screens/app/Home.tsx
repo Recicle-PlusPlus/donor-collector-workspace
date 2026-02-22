@@ -127,7 +127,7 @@ export function Home() {
         <View style={styles.mainButtonContainer}>
           <ButtonDefault
             title="Agendar Nova Coleta"
-            fun={() => alert('Navegar para DonationCreation')}
+            fun={() => navigation.navigate('DonationStep1')}
             color={colors.primary}
             textColor={colors.textLight}
             width={0.8}
