@@ -66,7 +66,7 @@ export function Sign() {
           data: {
             name: name,
             phone: phone,
-            role: 'donor',
+            role: 'collector',
           },
         },
       });
@@ -104,7 +104,7 @@ export function Sign() {
         </View>
 
         <View style={styles.dataContainer}>
-          <Text style={styles.title}>Seja um Doador</Text>
+          <Text style={styles.title}>Seja um Coletor</Text>
 
           <InputIcon
             label="Nome Completo *"
@@ -147,7 +147,7 @@ export function Sign() {
           />
 
           <InputIcon
-            label="Confirmar Senha *"
+            label="Confirmar senha *"
             placeholder="Digite a senha novamente"
             value={confirmPass}
             onChangeText={setConfirmPass}
