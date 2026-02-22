@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Linking,
+} from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -60,7 +67,6 @@ export function DonationDetailsScreen() {
                 'Não foi possível cancelar a coleta. Tente novamente.',
               );
             } else {
-              // Retorna para a Home passando o refresh
               navigation.navigate('Main', {
                 refresh: true,
                 snackbarMessage: 'Coleta cancelada com sucesso!',
@@ -70,6 +76,30 @@ export function DonationDetailsScreen() {
         },
       ],
     );
+  };
+
+  const handleWhatsAppContact = () => {
+    if (!donationDetails?.collector?.phone) {
+      Alert.alert('Ops', 'O coletor não possui um telefone cadastrado.');
+      return;
+    }
+
+    const numericPhone = donationDetails.collector.phone.replace(/\D/g, '');
+
+    const finalPhone = numericPhone.startsWith('55')
+      ? numericPhone
+      : `55${numericPhone}`;
+
+    const message = `Olá ${donationDetails.collector.name}, sou doador no app de Reciclagem e queria combinar os detalhes da coleta...`;
+    const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
+
+    // Tenta abrir o WhatsApp
+    Linking.openURL(url).catch(() => {
+      Alert.alert(
+        'Erro',
+        'Não foi possível abrir o WhatsApp. Verifique se o aplicativo está instalado no seu celular.',
+      );
+    });
   };
 
   if (loading) {
@@ -97,6 +127,7 @@ export function DonationDetailsScreen() {
     scheduled_time_slots,
     notes,
     collector,
+    accepted_at,
   } = donationDetails;
   const canBeCancelled = status === 'pending' || status === 'accepted';
 
@@ -177,9 +208,30 @@ export function DonationDetailsScreen() {
               </List.Subheader>
               <List.Item
                 title={collector.name}
+                description={
+                  (status === 'accepted' || status === 'completed') &&
+                  accepted_at
+                    ? `Aceita em: ${new Date(accepted_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`
+                    : 'Coletor atribuído'
+                }
                 titleStyle={styles.listItemTitle}
+                descriptionStyle={{
+                  color: colors.primary,
+                  fontSize: 13,
+                  marginTop: 2,
+                }}
                 left={() => <List.Icon icon="account" color={colors.primary} />}
               />
+
+              <Button
+                mode="contained"
+                icon="whatsapp"
+                onPress={handleWhatsAppContact}
+                style={styles.whatsappButton}
+                buttonColor="#25D366"
+                textColor="#FFF">
+                Falar no WhatsApp
+              </Button>
             </List.Section>
           )}
 
@@ -213,15 +265,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     padding: 10,
-    paddingTop: 80,
+    paddingTop: 50,
   },
-  card: { backgroundColor: colors.surface, marginBottom: 20 },
+  card: { backgroundColor: colors.surface, marginBottom: 20, marginTop: 20 },
   centeredText: {
     textAlign: 'center',
     marginTop: 50,
     color: colors.textSecondary,
   },
   cancelButton: { margin: 10 },
+  whatsappButton: { marginHorizontal: 16, marginTop: 10, marginBottom: 5 },
   cardTitle: { color: colors.primaryDark, fontWeight: 'bold' },
   subheader: { color: colors.textSecondary, fontWeight: 'bold', fontSize: 14 },
   listItemTitle: { color: colors.text, fontSize: 16 },

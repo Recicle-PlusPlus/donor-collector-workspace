@@ -25,11 +25,8 @@ import {
   ButtonDefault,
 } from '@workspace/ui';
 
-// import { RegisterAddress } from "../../components/RegisterAddress";
-// import { AddressCard } from "../../components/AddressCard";
-
 export function Profile() {
-  const { user } = useAuth(); // Vem direto do nosso pacote DB
+  const { user } = useAuth();
 
   const [editProf, setEditProf] = useState(false);
   const [name, setName] = useState('');

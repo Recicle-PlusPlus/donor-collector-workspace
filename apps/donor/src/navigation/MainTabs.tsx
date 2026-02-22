@@ -3,7 +3,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '@workspace/ui';
 
-// Importando as nossas telas
 import { Home } from '../screens/app/Home';
 import { Profile } from '../screens/app/Profile';
 
@@ -13,7 +12,7 @@ export function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerShown: false, // Esconde o cabeçalho padrão
+        headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {

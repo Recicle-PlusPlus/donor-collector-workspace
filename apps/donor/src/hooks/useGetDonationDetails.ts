@@ -19,7 +19,7 @@ export function useGetDonationDetails(donationId: string) {
         .from('donations')
         .select(
           `
-          id, status, created_at, notes, scheduled_days, scheduled_time_slots,
+          id, status, created_at, accepted_at, notes, scheduled_days, scheduled_time_slots,
           address:addresses ( * ),
           collector:users!collector_id ( name, phone ),
           items:donation_items ( weight_kg, material:materials ( name ) )
