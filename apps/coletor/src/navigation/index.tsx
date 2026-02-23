@@ -6,16 +6,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { Loading } from '@workspace/ui';
 
 import { Login } from '../screens/auth/Login';
-import { Home } from '../screens/app/Home';
 import { Sign } from '../screens/auth/Sign';
 import { DonationAccept } from '../screens/app/DonationAccept';
+import { MainTabs } from './MainTabs';
+import { ChatScreen } from '../screens/app/ChatScreen';
 
-// Tipagem das rotas
 export type RootStackParamList = {
   Login: undefined;
   Sign: undefined;
-  Home: undefined;
+  Main: { refresh?: boolean } | undefined;
   DonationAccept: { donationId: string };
+  Profile: undefined;
+  Chat: { donationId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -34,7 +36,12 @@ export function RootNavigator() {
         {user ? (
           // Usuário logado
           <Stack.Group>
-            <Stack.Screen name="Home" component={Home} />
+            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen
+              name="Chat"
+              component={ChatScreen}
+              options={{ headerShown: false }}
+            />
             <Stack.Screen
               name="DonationAccept"
               component={DonationAccept}

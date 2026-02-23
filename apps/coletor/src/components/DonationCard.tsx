@@ -1,14 +1,8 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Linking,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '@workspace/ui';
+import { useNavigation } from '@react-navigation/native';
 
 interface DonationCardProps {
   donation: any;
@@ -21,6 +15,8 @@ export const DonationCard = ({
   onPressDetails,
   isPending = true,
 }: DonationCardProps) => {
+  const navigation = useNavigation<any>();
+
   const { address, donor, items, status } = donation;
 
   // Junta os nomes dos materiais para exibir (Ex: Plástico, Metal)
@@ -31,23 +27,6 @@ export const DonationCard = ({
   const totalWeight =
     items?.reduce((sum: number, item: any) => sum + (item.weight_kg || 0), 0) ||
     0;
-
-  const handleWhatsApp = () => {
-    if (!donor?.phone) {
-      Alert.alert('Ops', 'O doador não possui telefone cadastrado.');
-      return;
-    }
-    const numericPhone = donor.phone.replace(/\D/g, '');
-    const finalPhone = numericPhone.startsWith('55')
-      ? numericPhone
-      : `55${numericPhone}`;
-    const message = `Olá ${donor.name}, sou o coletor do app de Reciclagem e vou realizar a sua coleta!`;
-    const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
-
-    Linking.openURL(url).catch(() =>
-      Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.'),
-    );
-  };
 
   return (
     <View style={styles.card}>
@@ -77,7 +56,7 @@ export const DonationCard = ({
           {donor?.photo_url ? (
             <View style={styles.avatarMock}>
               <MaterialCommunityIcons name="account" size={20} color="#fff" />
-            </View> // Pode substituir por Image depois
+            </View>
           ) : (
             <View style={styles.avatarMock}>
               <MaterialCommunityIcons name="account" size={20} color="#fff" />
@@ -96,10 +75,12 @@ export const DonationCard = ({
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={styles.whatsappButton}
-            onPress={handleWhatsApp}>
+            style={[styles.whatsappButton, { backgroundColor: colors.primary }]}
+            onPress={() =>
+              navigation.navigate('Chat', { donationId: donation.id })
+            }>
             <MaterialCommunityIcons
-              name="whatsapp"
+              name="chat-processing"
               size={18}
               color="#fff"
               style={{ marginRight: 5 }}

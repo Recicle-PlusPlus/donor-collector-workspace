@@ -23,8 +23,9 @@ import { supabase } from '@workspace/db';
 import { useAuth } from '../../contexts/AuthContext';
 
 type RootStackParamList = {
-  Home: { refresh?: boolean };
+  Main: { refresh?: boolean };
   DonationAccept: { donationId: string };
+  Chat: { donationId: string };
 };
 
 type AcceptScreenRouteProp = RouteProp<RootStackParamList, 'DonationAccept'>;
@@ -106,7 +107,7 @@ export function DonationAccept() {
                 'Sucesso!',
                 'Coleta aceita! Agora você pode combinar os detalhes com o doador pelo WhatsApp.',
               );
-              navigation.navigate('Home', { refresh: true });
+              navigation.navigate('Main', { refresh: true });
             }
           },
         },
@@ -235,14 +236,28 @@ export function DonationAccept() {
                 title={donor?.name}
                 description={
                   isPending
-                    ? 'O WhatsApp será liberado ao aceitar'
-                    : "Clique em 'Chat' na Home para conversar"
+                    ? 'O chat será liberado ao aceitar a coleta'
+                    : 'Clique no botão abaixo para conversar'
                 }
                 titleStyle={styles.listItemTitle}
                 left={() => (
                   <List.Icon icon="account-circle" color={colors.primary} />
                 )}
               />
+
+              {!isPending && (
+                <Button
+                  mode="contained"
+                  icon="chat-processing"
+                  onPress={() =>
+                    navigation.navigate('Chat', { donationId: donationId })
+                  }
+                  style={{ marginTop: 10 }}
+                  buttonColor={colors.primary}
+                  textColor="#FFF">
+                  Abrir Chat
+                </Button>
+              )}
             </List.Section>
           </Card.Content>
         </Card>

@@ -225,12 +225,14 @@ export function DonationDetailsScreen() {
 
               <Button
                 mode="contained"
-                icon="whatsapp"
-                onPress={handleWhatsAppContact}
+                icon="chat-processing"
+                onPress={() =>
+                  navigation.navigate('Chat', { donationId: donationId })
+                }
                 style={styles.whatsappButton}
-                buttonColor="#25D366"
+                buttonColor={colors.primary}
                 textColor="#FFF">
-                Falar no WhatsApp
+                Abrir Chat
               </Button>
             </List.Section>
           )}
