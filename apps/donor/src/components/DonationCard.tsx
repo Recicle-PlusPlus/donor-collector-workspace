@@ -10,24 +10,43 @@ import { RootStackParamList } from '../navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
+const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
 export const DonationCard = ({ item }: { item: any }) => {
   const navigation = useNavigation<NavigationProp>();
 
   const statusInfo: any = {
     pending: { text: 'Aguardando Coletor', color: '#f59e0b' },
     accepted: { text: 'Coleta Agendada', color: colors.primary },
-    completed: { text: 'Concluída', color: colors.success }, // Corrigido para success
-    cancelled: { text: 'Cancelada', color: colors.error }, // Corrigido para error
+    completed: { text: 'Concluída', color: colors.success },
+    cancelled: { text: 'Cancelada', color: colors.error },
   };
 
   const handleCardPress = () => {
     navigation.navigate('DonationDetails', { donationId: item.id });
   };
 
-  // Previne erros caso a doação não tenha itens cadastrados
   const materialsText =
     item.donation_items?.map((di: any) => di.materials?.name).join(', ') ||
     'Nenhum material';
+
+  // Lógica inteligente para resumir os horários no Card
+  let scheduleText = 'Horário a combinar';
+  if (item.donation_schedules && item.donation_schedules.length > 0) {
+    const firstSchedule = item.donation_schedules[0];
+    const dayName = DAYS[firstSchedule.day_of_week];
+
+    // O Supabase retorna TIME como "HH:MM:SS", o substring(0,5) pega só "HH:MM"
+    const start = firstSchedule.start_time?.substring(0, 5);
+    const end = firstSchedule.end_time?.substring(0, 5);
+
+    scheduleText = `${dayName}, ${start} às ${end}`;
+
+    // Se tiver mais de um horário, avisa que tem mais opções
+    if (item.donation_schedules.length > 1) {
+      scheduleText += ` (+${item.donation_schedules.length - 1})`;
+    }
+  }
 
   return (
     <TouchableOpacity onPress={handleCardPress} activeOpacity={0.8}>
@@ -46,7 +65,19 @@ export const DonationCard = ({ item }: { item: any }) => {
             </Chip>
           </View>
 
-          <Paragraph style={styles.cardMaterials}>{materialsText}</Paragraph>
+          <Paragraph style={styles.cardMaterials} numberOfLines={1}>
+            {materialsText}
+          </Paragraph>
+
+          {/* NOVO BLOCO DE HORÁRIOS */}
+          <View style={styles.cardRow}>
+            <MaterialCommunityIcons
+              name="calendar-clock"
+              size={16}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.cardInfoText}>{scheduleText}</Text>
+          </View>
 
           {item.addresses && (
             <View style={styles.cardRow}>
@@ -55,10 +86,9 @@ export const DonationCard = ({ item }: { item: any }) => {
                 size={16}
                 color={colors.textSecondary}
               />
-              <Text
-                style={
-                  styles.cardAddressText
-                }>{`${item.addresses.street}, ${item.addresses.num}`}</Text>
+              <Text style={styles.cardInfoText} numberOfLines={1}>
+                {`${item.addresses.street}, ${item.addresses.num}`}
+              </Text>
             </View>
           )}
 
@@ -69,10 +99,9 @@ export const DonationCard = ({ item }: { item: any }) => {
                 size={16}
                 color={colors.textSecondary}
               />
-              <Text
-                style={
-                  styles.cardAddressText
-                }>{`Coletor(a): ${item.collector.name}`}</Text>
+              <Text style={styles.cardInfoText} numberOfLines={1}>
+                {`Coletor: ${item.collector.name}`}
+              </Text>
             </View>
           )}
         </Card.Content>
@@ -107,11 +136,12 @@ const styles = StyleSheet.create({
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 6,
   },
-  cardAddressText: {
+  cardInfoText: {
     color: colors.textSecondary,
     marginLeft: 8,
     fontSize: 12,
+    flex: 1,
   },
 });

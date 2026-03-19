@@ -1,12 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  Linking,
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -22,6 +15,8 @@ import { colors } from '@workspace/ui';
 import { supabase } from '@workspace/db';
 import { useAuth } from '../../contexts/AuthContext';
 
+import { useGetDonationDetails } from '../../hooks/useGetDonationDetails';
+
 type RootStackParamList = {
   Main: { refresh?: boolean };
   DonationAccept: { donationId: string };
@@ -34,42 +29,25 @@ type AcceptScreenNavigationProp = NativeStackNavigationProp<
   'DonationAccept'
 >;
 
+const DAYS = [
+  'Domingo',
+  'Segunda-feira',
+  'Terça-feira',
+  'Quarta-feira',
+  'Quinta-feira',
+  'Sexta-feira',
+  'Sábado',
+];
+
 export function DonationAccept() {
   const navigation = useNavigation<AcceptScreenNavigationProp>();
   const route = useRoute<AcceptScreenRouteProp>();
   const { donationId } = route.params;
   const { user } = useAuth();
 
-  const [donation, setDonation] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { donation, loading, error } = useGetDonationDetails(donationId);
   const [accepting, setAccepting] = useState(false);
 
-  // Busca os detalhes completos da doação
-  useEffect(() => {
-    async function fetchDonationDetails() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('donations')
-        .select(
-          `
-          id, status, created_at, notes, scheduled_days, scheduled_time_slots,
-          address:addresses ( street, num, neighborhood, city, state, cep, complement ),
-          donor:users!donor_id ( name, photo_url, phone ),
-          items:donation_items ( weight_kg, material:materials ( name ) )
-        `,
-        )
-        .eq('id', donationId)
-        .single();
-
-      if (data) setDonation(data);
-      if (error) console.error('Erro ao buscar detalhes:', error);
-      setLoading(false);
-    }
-
-    fetchDonationDetails();
-  }, [donationId]);
-
-  // Função principal para aceitar a coleta
   const handleAcceptDonation = async () => {
     if (!user) return;
 
@@ -84,9 +62,7 @@ export function DonationAccept() {
           onPress: async () => {
             setAccepting(true);
 
-            // 1. Atualiza o status para 'accepted'
-            // 2. Registra o ID do coletor logado como o responsável
-            const { error } = await supabase
+            const { error: updateError } = await supabase
               .from('donations')
               .update({
                 status: 'accepted',
@@ -97,7 +73,7 @@ export function DonationAccept() {
 
             setAccepting(false);
 
-            if (error) {
+            if (updateError) {
               Alert.alert(
                 'Erro',
                 'Não foi possível aceitar a coleta. Tente novamente.',
@@ -105,7 +81,7 @@ export function DonationAccept() {
             } else {
               Alert.alert(
                 'Sucesso!',
-                'Coleta aceita! Agora você pode combinar os detalhes com o doador pelo WhatsApp.',
+                'Coleta aceita! Agora você pode combinar os detalhes com o doador pelo Chat.',
               );
               navigation.navigate('Main', { refresh: true });
             }
@@ -125,7 +101,7 @@ export function DonationAccept() {
     );
   }
 
-  if (!donation) {
+  if (error || !donation) {
     return (
       <Text style={styles.centeredText}>
         Erro ao carregar os detalhes da coleta.
@@ -133,16 +109,41 @@ export function DonationAccept() {
     );
   }
 
-  const {
-    address,
-    items,
-    scheduled_days,
-    scheduled_time_slots,
-    notes,
-    donor,
-    status,
-  } = donation;
+  const { address, items, schedules, notes, donor, status } = donation;
   const isPending = status === 'pending';
+
+  const renderSchedules = () => {
+    if (!schedules || schedules.length === 0) {
+      return (
+        <List.Item
+          title="Nenhum horário definido"
+          titleStyle={styles.listItemDescription}
+          left={() => (
+            <List.Icon icon="calendar-alert" color={colors.textSecondary} />
+          )}
+        />
+      );
+    }
+
+    return schedules.map((schedule: any, index: number) => {
+      const dayName = DAYS[schedule.day_of_week];
+      const start = schedule.start_time?.substring(0, 5);
+      const end = schedule.end_time?.substring(0, 5);
+
+      return (
+        <List.Item
+          key={index}
+          title={dayName}
+          description={`${start} às ${end}`}
+          titleStyle={styles.listItemTitle}
+          descriptionStyle={styles.listItemDescription}
+          left={() => (
+            <List.Icon icon="calendar-clock" color={colors.primary} />
+          )}
+        />
+      );
+    });
+  };
 
   return (
     <>
@@ -200,20 +201,7 @@ export function DonationAccept() {
               <List.Subheader style={styles.subheader}>
                 Disponibilidade do Doador
               </List.Subheader>
-              <List.Item
-                title={scheduled_days.join(', ')}
-                titleStyle={styles.listItemTitle}
-                left={() => (
-                  <List.Icon icon="calendar-check" color={colors.primary} />
-                )}
-              />
-              <List.Item
-                title={scheduled_time_slots.join(', ')}
-                titleStyle={styles.listItemTitle}
-                left={() => (
-                  <List.Icon icon="clock-outline" color={colors.primary} />
-                )}
-              />
+              {renderSchedules()}
             </List.Section>
 
             {notes && (

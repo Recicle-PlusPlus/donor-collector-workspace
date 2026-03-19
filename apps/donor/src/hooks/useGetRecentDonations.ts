@@ -24,7 +24,8 @@ export function useGetRecentDonations(donorId?: string) {
         created_at,
         addresses ( street, num, neighborhood ),
         collector:users!collector_id ( name ),
-        donation_items ( materials ( name ) )
+        donation_items ( materials ( name ) ),
+        donation_schedules ( day_of_week, start_time, end_time )
       `,
       )
       .eq('donor_id', donorId)

@@ -19,9 +19,9 @@ export function useGetDonationDetails(donationId: string) {
         .from('donations')
         .select(
           `
-          id, status, created_at, accepted_at, notes,
-          address:addresses ( * ),
-          collector:users!collector_id ( name, phone ),
+          id, status, created_at, notes,
+          address:addresses ( street, num, neighborhood, city, state, cep, complement ),
+          donor:users!donor_id ( name, photo_url, phone ),
           items:donation_items ( weight_kg, material:materials ( name ) ),
           schedules:donation_schedules ( day_of_week, start_time, end_time )
         `,

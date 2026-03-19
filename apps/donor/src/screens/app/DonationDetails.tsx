@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  Linking,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -29,6 +22,16 @@ type DetailsScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'DonationDetails'
 >;
+
+const DAYS = [
+  'Domingo',
+  'Segunda-feira',
+  'Terça-feira',
+  'Quarta-feira',
+  'Quinta-feira',
+  'Sexta-feira',
+  'Sábado',
+];
 
 export function DonationDetailsScreen() {
   const navigation = useNavigation<DetailsScreenNavigationProp>();
@@ -78,30 +81,6 @@ export function DonationDetailsScreen() {
     );
   };
 
-  const handleWhatsAppContact = () => {
-    if (!donationDetails?.collector?.phone) {
-      Alert.alert('Ops', 'O coletor não possui um telefone cadastrado.');
-      return;
-    }
-
-    const numericPhone = donationDetails.collector.phone.replace(/\D/g, '');
-
-    const finalPhone = numericPhone.startsWith('55')
-      ? numericPhone
-      : `55${numericPhone}`;
-
-    const message = `Olá ${donationDetails.collector.name}, sou doador no app de Reciclagem e queria combinar os detalhes da coleta...`;
-    const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
-
-    // Tenta abrir o WhatsApp
-    Linking.openURL(url).catch(() => {
-      Alert.alert(
-        'Erro',
-        'Não foi possível abrir o WhatsApp. Verifique se o aplicativo está instalado no seu celular.',
-      );
-    });
-  };
-
   if (loading) {
     return (
       <ActivityIndicator
@@ -119,16 +98,9 @@ export function DonationDetailsScreen() {
     );
   }
 
-  const {
-    status,
-    address,
-    items,
-    scheduled_days,
-    scheduled_time_slots,
-    notes,
-    collector,
-    accepted_at,
-  } = donationDetails;
+  const { status, address, items, schedules, notes, collector, accepted_at } =
+    donationDetails;
+
   const canBeCancelled = status === 'pending' || status === 'accepted';
 
   const statusInfo: any = {
@@ -136,6 +108,39 @@ export function DonationDetailsScreen() {
     accepted: { text: 'Coleta Agendada', color: colors.primary },
     completed: { text: 'Concluída', color: colors.success },
     cancelled: { text: 'Cancelada', color: colors.error },
+  };
+
+  const renderSchedules = () => {
+    if (!schedules || schedules.length === 0) {
+      return (
+        <List.Item
+          title="Nenhum horário definido"
+          titleStyle={styles.listItemDescription}
+          left={() => (
+            <List.Icon icon="calendar-alert" color={colors.textSecondary} />
+          )}
+        />
+      );
+    }
+
+    return schedules.map((schedule: any, index: number) => {
+      const dayName = DAYS[schedule.day_of_week];
+      const start = schedule.start_time?.substring(0, 5);
+      const end = schedule.end_time?.substring(0, 5);
+
+      return (
+        <List.Item
+          key={index}
+          title={dayName}
+          description={`${start} às ${end}`}
+          titleStyle={styles.listItemTitle}
+          descriptionStyle={styles.listItemDescription}
+          left={() => (
+            <List.Icon icon="calendar-clock" color={colors.primary} />
+          )}
+        />
+      );
+    });
   };
 
   return (
@@ -185,20 +190,9 @@ export function DonationDetailsScreen() {
 
           <List.Section>
             <List.Subheader style={styles.subheader}>
-              Agendamento
+              Disponibilidade
             </List.Subheader>
-            <List.Item
-              title={scheduled_days.join(', ')}
-              titleStyle={styles.listItemTitle}
-              left={() => <List.Icon icon="calendar" color={colors.primary} />}
-            />
-            <List.Item
-              title={scheduled_time_slots.join(', ')}
-              titleStyle={styles.listItemTitle}
-              left={() => (
-                <List.Icon icon="clock-outline" color={colors.primary} />
-              )}
-            />
+            {renderSchedules()}
           </List.Section>
 
           {collector && (

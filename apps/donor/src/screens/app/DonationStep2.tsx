@@ -1,18 +1,14 @@
 import React, { useState } from 'react';
-import { Text, StyleSheet, ScrollView, TextInput } from 'react-native';
+import { Text, StyleSheet, ScrollView, TextInput, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import {
-  Button,
-  List,
-  Checkbox,
-  ActivityIndicator,
-  Snackbar,
-} from 'react-native-paper';
+import { Button, List, ActivityIndicator, Snackbar } from 'react-native-paper';
 
 import { supabase } from '@workspace/db';
 import { colors } from '@workspace/ui';
 import { RootStackParamList } from '../../navigation';
+
+import { SchedulePicker, Schedule } from '../../components/SchedulerPicker';
 
 type Step2RouteProp = RouteProp<RootStackParamList, 'DonationStep2'>;
 type NavigationProp = NativeStackNavigationProp<
@@ -20,57 +16,49 @@ type NavigationProp = NativeStackNavigationProp<
   'DonationStep2'
 >;
 
-const DAYS_OPTIONS = [
-  'Segunda',
-  'Terça',
-  'Quarta',
-  'Quinta',
-  'Sexta',
-  'Sábado',
-  'Domingo',
-];
-const TIME_SLOTS_OPTIONS = ['Manhã (8h-12h)', 'Tarde (13h-18h)'];
-
 export function DonationStep2() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<Step2RouteProp>();
 
-  // Recebendo os dados da Etapa 1
   const { address, materials } = route.params;
 
   const [notes, setNotes] = useState('');
-  const [scheduledDays, setScheduledDays] = useState<string[]>([]);
-  const [scheduledTimeSlots, setScheduledTimeSlots] = useState<string[]>([]);
+
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
 
-  const handleDayToggle = (day: string) => {
-    setScheduledDays(prev =>
-      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day],
-    );
-  };
-
-  const handleTimeToggle = (time: string) => {
-    setScheduledTimeSlots(prev =>
-      prev.includes(time) ? prev.filter(t => t !== time) : [...prev, time],
-    );
-  };
-
   async function handleConfirmDonation() {
+    if (schedules.length === 0) {
+      setSnackbar({
+        visible: true,
+        message: 'Adicione pelo menos um horário disponível.',
+      });
+      return;
+    }
+
     setLoading(true);
+
+    // Formata os horários (HH:MM:SS)
+    const formattedSchedules = schedules.map(s => ({
+      day_of_week: s.day_of_week,
+      start_time: `${s.start_time}:00`,
+      end_time: `${s.end_time}:00`,
+    }));
 
     const donationData = {
       p_address_id: address.id,
-      p_materials: materials, // O array que montamos na Etapa 1
+      p_materials: materials,
       p_notes: notes,
-      p_scheduled_days: scheduledDays,
-      p_scheduled_time_slots: scheduledTimeSlots,
+      p_schedules: formattedSchedules,
     };
 
-    const { data, error } = await supabase.rpc(
-      'create_donation_request',
+    const { error } = await supabase.rpc(
+      'create_donation_request_v2',
       donationData,
     );
+
     setLoading(false);
 
     if (error) {
@@ -80,7 +68,6 @@ export function DonationStep2() {
         message: 'Erro ao agendar a coleta. Tente novamente.',
       });
     } else {
-      // Dispara a navegação para a Home com a flag de refresh
       navigation.navigate('Main', {
         refresh: true,
         snackbarMessage: 'Coleta agendada com sucesso!',
@@ -91,19 +78,23 @@ export function DonationStep2() {
   return (
     <ScrollView style={styles.container}>
       {loading && (
-        <ActivityIndicator
-          animating={true}
-          size="large"
-          color={colors.primary}
-          style={styles.loading}
-        />
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator
+            animating={true}
+            size="large"
+            color={colors.primary}
+          />
+        </View>
       )}
 
       <Text style={styles.title}>Resumo da Coleta</Text>
 
-      <List.Section>
-        <List.Subheader style={styles.subheader}>Endereço</List.Subheader>
+      <List.Section style={styles.sectionCard}>
+        <List.Subheader style={styles.subheader}>
+          Local de Retirada
+        </List.Subheader>
         <List.Item
+          style={{ paddingLeft: 15 }}
           title={`${address.street}, ${address.num}`}
           description={`${address.neighborhood} - ${address.city}`}
           titleStyle={styles.listItemTitle}
@@ -112,10 +103,13 @@ export function DonationStep2() {
         />
       </List.Section>
 
-      <List.Section>
-        <List.Subheader style={styles.subheader}>Materiais</List.Subheader>
+      <List.Section style={styles.sectionCard}>
+        <List.Subheader style={styles.subheader}>
+          Materiais Separados
+        </List.Subheader>
         {materials.map((mat: any) => (
           <List.Item
+            style={{ paddingLeft: 15 }}
             key={mat.materialId}
             title={mat.materialName}
             description={`${mat.weight} kg`}
@@ -128,43 +122,25 @@ export function DonationStep2() {
 
       <Text style={styles.title}>Agendamento</Text>
 
-      <List.Section>
-        <List.Subheader style={styles.subheader}>
-          Selecione os dias disponíveis
-        </List.Subheader>
-        {DAYS_OPTIONS.map(day => (
-          <Checkbox.Item
-            key={day}
-            label={day}
-            labelStyle={styles.checkboxLabel}
-            status={scheduledDays.includes(day) ? 'checked' : 'unchecked'}
-            onPress={() => handleDayToggle(day)}
-            color={colors.primary}
-            uncheckedColor={colors.textSecondary}
-          />
-        ))}
-      </List.Section>
+      {/* A MÁGICA ACONTECE AQUI */}
+      <View style={styles.sectionCard}>
+        <SchedulePicker
+          schedules={schedules}
+          onAddSchedule={newSchedule =>
+            setSchedules([...schedules, newSchedule])
+          }
+          onRemoveSchedule={index => {
+            const newSchedules = [...schedules];
+            newSchedules.splice(index, 1);
+            setSchedules(newSchedules);
+          }}
+        />
+      </View>
 
-      <List.Section>
-        <List.Subheader style={styles.subheader}>
-          Selecione os períodos
-        </List.Subheader>
-        {TIME_SLOTS_OPTIONS.map(time => (
-          <Checkbox.Item
-            key={time}
-            label={time}
-            labelStyle={styles.checkboxLabel}
-            status={scheduledTimeSlots.includes(time) ? 'checked' : 'unchecked'}
-            onPress={() => handleTimeToggle(time)}
-            color={colors.primary}
-            uncheckedColor={colors.textSecondary}
-          />
-        ))}
-      </List.Section>
-
+      <Text style={styles.title}>Observações Adicionais</Text>
       <TextInput
         style={styles.input}
-        placeholder="Observações (opcional)... Ex: Deixar na portaria, material em 3 sacolas, etc."
+        placeholder="Ex: Pegar na portaria, material em 3 sacolas, avisar quando estiver vindo..."
         placeholderTextColor={colors.textSecondary}
         value={notes}
         onChangeText={setNotes}
@@ -175,19 +151,18 @@ export function DonationStep2() {
         style={styles.navButton}
         mode="contained"
         onPress={handleConfirmDonation}
-        disabled={
-          loading ||
-          scheduledDays.length === 0 ||
-          scheduledTimeSlots.length === 0
-        }
+        disabled={loading || schedules.length === 0}
         buttonColor={colors.primary}
-        textColor={colors.textLight}>
+        textColor={colors.textLight}
+        icon="check-circle-outline">
         Confirmar Agendamento
       </Button>
 
       <Snackbar
         visible={snackbar.visible}
-        onDismiss={() => setSnackbar({ ...snackbar, visible: false })}>
+        onDismiss={() => setSnackbar({ ...snackbar, visible: false })}
+        style={{ backgroundColor: colors.surface }}
+        theme={{ colors: { onSurface: colors.text } }}>
         {snackbar.message}
       </Snackbar>
     </ScrollView>
@@ -195,29 +170,55 @@ export function DonationStep2() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: colors.background },
+  container: {
+    flex: 1,
+    padding: 16,
+    paddingTop: 40,
+    backgroundColor: colors.background,
+  },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginTop: 16,
+    marginTop: 10,
     marginBottom: 8,
     color: colors.primaryDark,
   },
-  subheader: { color: colors.textSecondary },
+  subheader: { color: colors.textSecondary, fontWeight: 'bold' },
+  sectionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    paddingBottom: 10,
+    marginBottom: 15,
+    elevation: 1,
+  },
   listItemTitle: { color: colors.text, fontWeight: 'bold' },
   listItemDescription: { color: colors.textSecondary },
-  checkboxLabel: { color: colors.text },
   input: {
     backgroundColor: colors.surface,
     color: colors.text,
     padding: 15,
-    marginVertical: 10,
-    borderRadius: 5,
+    borderRadius: 12,
     minHeight: 100,
     textAlignVertical: 'top',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#eee',
+    marginBottom: 20,
   },
-  navButton: { marginTop: 20, marginBottom: 40 },
-  loading: { position: 'absolute', top: '50%', left: '50%', zIndex: 10 },
+  navButton: {
+    marginTop: 10,
+    marginBottom: 40,
+    paddingVertical: 5,
+    borderRadius: 25,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    zIndex: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
