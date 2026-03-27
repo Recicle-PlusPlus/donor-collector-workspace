@@ -1,3 +1,4 @@
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
 import { Text, StyleSheet, ScrollView, TextInput, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -19,6 +20,8 @@ type NavigationProp = NativeStackNavigationProp<
 export function DonationStep2() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<Step2RouteProp>();
+
+  const insets = useSafeAreaInsets();
 
   const { address, materials } = route.params;
 
@@ -76,7 +79,9 @@ export function DonationStep2() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}>
       {loading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator

@@ -29,7 +29,11 @@ export const DonationCard = ({
     0;
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity 
+      style={styles.card} 
+      onPress={onPressDetails} 
+      activeOpacity={0.8}
+    >
       <View style={styles.headerRow}>
         <View style={styles.materialsBadge}>
           <Text style={styles.materialsText} numberOfLines={1}>
@@ -89,7 +93,7 @@ export const DonationCard = ({
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

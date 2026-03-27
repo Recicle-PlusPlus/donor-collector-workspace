@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Platform,
+} from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -10,7 +17,7 @@ import {
   ActivityIndicator,
   Chip,
 } from 'react-native-paper';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@workspace/ui';
 import { supabase } from '@workspace/db';
 
@@ -34,6 +41,7 @@ const DAYS = [
 ];
 
 export function DonationDetailsScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<DetailsScreenNavigationProp>();
   const route = useRoute<DetailsScreenRouteProp>();
   const { donationId } = route.params;
@@ -144,7 +152,12 @@ export function DonationDetailsScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{
+        paddingBottom: insets.bottom + 40,
+      }}>
       <Card style={styles.card}>
         <Card.Title
           title="Status da Coleta"
@@ -182,6 +195,8 @@ export function DonationDetailsScreen() {
               description={`${address.neighborhood} - ${address.city}`}
               titleStyle={styles.listItemTitle}
               descriptionStyle={styles.listItemDescription}
+              titleNumberOfLines={10}
+              descriptionNumberOfLines={10}
               left={() => (
                 <List.Icon icon="map-marker" color={colors.primary} />
               )}

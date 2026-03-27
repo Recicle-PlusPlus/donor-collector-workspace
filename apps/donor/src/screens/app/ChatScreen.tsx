@@ -6,7 +6,9 @@ import {
   Platform,
   FlatList,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 import { supabase, useChat } from '@workspace/db';
@@ -14,11 +16,14 @@ import { colors, ChatHeader, ChatBubble, ChatInput } from '@workspace/ui';
 import { useAuth } from '../../contexts/AuthContext';
 
 export function ChatScreen() {
+  const [hasKeyboardOpened, setHasKeyboardOpened] = useState(false);
+
   const route = useRoute<any>();
   const navigation = useNavigation();
   const { donationId } = route.params;
   const { user } = useAuth();
 
+  const insets = useSafeAreaInsets();
   const {
     messages,
     sendMessage,
@@ -34,6 +39,10 @@ export function ChatScreen() {
 
   // Montar o cabeçalho e checar o status da doação
   useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setHasKeyboardOpened(true);
+    });
+
     async function fetchDonationDetails() {
       if (!user || !donationId) return;
 
@@ -79,6 +88,9 @@ export function ChatScreen() {
     }
 
     fetchDonationDetails();
+    return () => {
+      showSubscription.remove();
+    };
   }, [donationId, user]);
 
   const renderItem = ({ item }: { item: any }) => {
@@ -107,9 +119,7 @@ export function ChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.container} behavior="height">
       <ChatHeader
         name={otherPerson.name}
         photoUrl={otherPerson.photoUrl}
@@ -124,13 +134,22 @@ export function ChatScreen() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
-
-      <ChatInput onSend={sendMessage} disabled={isChatDisabled} />
+      <View
+        style={{
+          paddingBottom: hasKeyboardOpened ? 0 : insets.bottom,
+          backgroundColor: '#E5DDD5',
+        }}>
+        <ChatInput onSend={sendMessage} disabled={isChatDisabled} />
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#E5DDD5',
+  },
   container: { flex: 1, backgroundColor: '#E5DDD5' },
   loadingContainer: {
     flex: 1,

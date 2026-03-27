@@ -6,7 +6,9 @@ import {
   Platform,
   FlatList,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 import { supabase, useChat } from '@workspace/db';
@@ -14,11 +16,14 @@ import { colors, ChatHeader, ChatBubble, ChatInput } from '@workspace/ui';
 import { useAuth } from '../../contexts/AuthContext';
 
 export function ChatScreen() {
+  const [hasKeyboardOpened, setHasKeyboardOpened] = useState(false);
+
   const route = useRoute<any>();
   const navigation = useNavigation();
   const { donationId } = route.params;
   const { user } = useAuth();
 
+  const insets = useSafeAreaInsets();
   const {
     messages,
     sendMessage,
@@ -34,6 +39,10 @@ export function ChatScreen() {
 
   // Montar o cabeçalho e checar o status da doação
   useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setHasKeyboardOpened(true);
+    });
+
     async function fetchDonationDetails() {
       if (!user || !donationId) return;
 
@@ -78,6 +87,9 @@ export function ChatScreen() {
     }
 
     fetchDonationDetails();
+    return () => {
+      showSubscription.remove();
+    };
   }, [donationId, user]);
 
   const renderItem = ({ item }: { item: any }) => {
@@ -106,31 +118,42 @@ export function ChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ChatHeader
-        name={otherPerson.name}
-        photoUrl={otherPerson.photoUrl}
-        onBack={() => navigation.goBack()}
-      />
+    <View style={styles.safeArea}>
+      <KeyboardAvoidingView style={styles.container} behavior="height">
+        <ChatHeader
+          name={otherPerson.name}
+          photoUrl={otherPerson.photoUrl}
+          onBack={() => navigation.goBack()}
+        />
 
-      <FlatList
-        data={messages}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        inverted
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
-
-      <ChatInput onSend={sendMessage} disabled={isChatDisabled} />
-    </KeyboardAvoidingView>
+        <FlatList
+          data={messages}
+          keyExtractor={item => item.id}
+          renderItem={renderItem}
+          inverted
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+        <View
+          style={{
+            paddingBottom: hasKeyboardOpened ? 0 : insets.bottom,
+            backgroundColor: '#E5DDD5',
+          }}>
+          <ChatInput onSend={sendMessage} disabled={isChatDisabled} />
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#E5DDD5' },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#E5DDD5',
+  },
+  container: {
+    flex: 1,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

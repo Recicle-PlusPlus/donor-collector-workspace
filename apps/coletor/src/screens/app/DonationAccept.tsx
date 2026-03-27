@@ -11,6 +11,7 @@ import {
   Paragraph,
 } from 'react-native-paper';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@workspace/ui';
 import { supabase } from '@workspace/db';
 import { useAuth } from '../../contexts/AuthContext';
@@ -45,6 +46,7 @@ export function DonationAccept() {
   const { donationId } = route.params;
   const { user } = useAuth();
 
+  const insets = useSafeAreaInsets();
   const { donation, loading, error } = useGetDonationDetails(donationId);
   const [accepting, setAccepting] = useState(false);
 
@@ -147,7 +149,12 @@ export function DonationAccept() {
 
   return (
     <>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingBottom: isPending ? 100 : insets.bottom + 20,
+        }}>
         {/* CARD PRINCIPAL - MATERIAIS */}
         <Card style={styles.card}>
           <Card.Title
@@ -190,7 +197,8 @@ export function DonationAccept() {
                 description={`${address?.neighborhood} - ${address?.city}\n${address?.complement ? `Complemento: ${address.complement}` : ''}`}
                 titleStyle={styles.listItemTitle}
                 descriptionStyle={styles.listItemDescription}
-                descriptionNumberOfLines={3}
+                titleNumberOfLines={10}
+                descriptionNumberOfLines={10}
                 left={() => (
                   <List.Icon icon="map-marker" color={colors.primary} />
                 )}
@@ -253,7 +261,11 @@ export function DonationAccept() {
 
       {/* BOTÃO FIXO NO RODAPÉ SE ESTIVER PENDENTE */}
       {isPending && (
-        <View style={styles.footerContainer}>
+        <View
+          style={[
+            styles.footerContainer,
+            { paddingBottom: Math.max(insets.bottom, 15) }, // Mantém pelo menos 15px se não houver margem do sistema
+          ]}>
           <Button
             mode="contained"
             onPress={handleAcceptDonation}
