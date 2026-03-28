@@ -5,10 +5,13 @@ import { colors } from '@workspace/ui';
 
 import { Home } from '../screens/app/Home';
 import { Profile } from '../screens/app/Profile';
+import { MarketplaceScreen } from '@workspace/ui/src/marketplace/MarketplaceScreen';
+import { useAuth } from '../contexts/AuthContext';
 
 const Tab = createBottomTabNavigator();
 
 export function MainTabs() {
+  const { user } = useAuth();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -49,6 +52,22 @@ export function MainTabs() {
           ),
         }}
       />
+      {process.env.EXPO_PUBLIC_ENABLE_MARKETPLACE === 'true' && (
+        <Tab.Screen
+          name="Marketplace"
+          options={{
+            title: 'Recompensas',
+            tabBarIcon: ({ color, size }) => (
+              <MaterialCommunityIcons
+                name="storefront-outline"
+                color={color}
+                size={size}
+              />
+            ),
+          }}>
+          {() => <MarketplaceScreen userId={user?.id || ''} />}
+        </Tab.Screen>
+      )}
     </Tab.Navigator>
   );
 }

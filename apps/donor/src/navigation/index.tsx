@@ -12,6 +12,7 @@ import { DonationDetailsScreen } from '../screens/app/DonationDetails';
 import { DonationStep1 } from '../screens/app/DonationStep1';
 import { DonationStep2 } from '../screens/app/DonationStep2';
 import { ChatScreen } from '../screens/app/ChatScreen';
+import { ExtractScreen } from '@workspace/ui/src/marketplace/ExtractScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -21,6 +22,7 @@ export type RootStackParamList = {
   DonationStep1: undefined;
   DonationStep2: { address: any; materials: any[] };
   Chat: { donationId: string };
+  Extrato: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -59,6 +61,11 @@ export function RootNavigator() {
               component={DonationStep2}
               options={{ title: 'Agendamento' }}
             />
+            {process.env.EXPO_PUBLIC_ENABLE_MARKETPLACE === 'true' && (
+              <Stack.Screen name="Extrato" options={{ headerShown: false }}>
+                {() => <ExtractScreen userId={user?.id || ''} />}
+              </Stack.Screen>
+            )}
           </Stack.Group>
         ) : (
           // Usuário não logado
