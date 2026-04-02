@@ -10,7 +10,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Snackbar } from 'react-native-paper';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 
 import { supabase } from '@workspace/db';
 import {

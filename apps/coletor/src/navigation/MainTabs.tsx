@@ -6,7 +6,7 @@ import { colors } from '@workspace/ui';
 import { Home } from '../screens/app/Home';
 import { Profile } from '../screens/app/Profile';
 import { MarketplaceScreen } from '@workspace/ui/src/marketplace/MarketplaceScreen';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 
 const Tab = createBottomTabNavigator();
 

@@ -7,7 +7,7 @@ import {
   Text,
 } from 'react-native';
 import { supabase } from '@workspace/db';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 import {
   colors,
   Loading,

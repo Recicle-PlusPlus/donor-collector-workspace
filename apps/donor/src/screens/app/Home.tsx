@@ -1,43 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import {
   View,
-  ScrollView,
   Text,
-  FlatList,
-  ActivityIndicator,
   StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  Image,
+  StatusBar,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { colors, ButtonDefault, Loading, ErrorModal } from '@workspace/ui';
-import { useAuth } from '../../contexts/AuthContext';
-
+import { colors, ErrorModal } from '@workspace/ui';
+import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 import { RootStackParamList } from '../../navigation';
+
 import { useGetDonorStatistics } from '../../hooks/useGetDonorStatistics';
 import { useGetRecentDonations } from '../../hooks/useGetRecentDonations';
 
-import { HomeHeader } from '../../components/HomeHeader';
-import { StatisticItem } from '../../components/StatisticItem';
-import { DonationCard } from '../../components/DonationCard';
-import { supabase } from '@workspace/db/src/client';
+import { ImpactSection } from './../../components/home/ImpactSection';
+import { ActiveDonations } from './../../components/home/ActiveDonations';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'Main'
 >;
-type HomeScreenRouteProp = RouteProp<RootStackParamList, 'Main'>;
 
 export function Home() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const route = useRoute<HomeScreenRouteProp>();
-  const { user } = useAuth();
 
+  const { user, profile } = useAuth();
   const donorId = user?.id;
 
-  const [donorName, setDonorName] = useState('Doador');
-  const [userPhotoUrl, setUserPhotoUrl] = useState<any>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const {
     statistics,
@@ -48,121 +45,95 @@ export function Home() {
     donations,
     loading: donationsLoading,
     error: donationsError,
-    refetch,
   } = useGetRecentDonations(donorId);
 
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
   useEffect(() => {
-    async function loadHeaderData() {
-      if (!user) return;
-
-      const { data: profileData } = await supabase
-        .from('users')
-        .select('name, photo_url')
-        .eq('id', user.id)
-        .single();
-
-      if (profileData) {
-        setDonorName(profileData.name || 'Doador');
-        if (profileData.photo_url) {
-          setUserPhotoUrl({ uri: profileData.photo_url });
-        }
-      }
+    if (statsError || donationsError) {
+      setErrorMsg('Ocorreu um problema ao carregar os seus dados.');
     }
-    loadHeaderData();
-  }, [user]);
+  }, [statsError, donationsError]);
 
-  if (donationsLoading && !donations.length) {
-    return <Loading message="Carregando dados..." />;
-  }
-
-  const renderStatistics = () => {
-    if (statsLoading) {
-      return (
-        <ActivityIndicator
-          size="large"
-          color={colors.primary}
-          style={{ marginVertical: 20 }}
-        />
-      );
-    }
-
-    if (statsError || !statistics || statistics.collectionsCompleted === 0) {
-      return (
-        <View style={styles.centeredMessage}>
-          <Text style={styles.emptyText}>
-            Nenhuma doação completada ainda. Cadastre a sua primeira doação!
-          </Text>
-        </View>
-      );
-    }
-
-    return (
-      <View style={styles.statisticsContainer}>
-        <StatisticItem
-          label="Coletas Completadas"
-          value={statistics.collectionsCompleted.toString()}
-        />
-        {statistics.materialTotals.map(
-          material =>
-            material.totalKg > 0 && (
-              <StatisticItem
-                key={material.name}
-                label={material.name}
-                value={`${material.totalKg.toFixed(1)} kg`}
-              />
-            ),
-        )}
-      </View>
-    );
-  };
+  // Fallbacks
+  const firstName = profile?.name ? profile.name.split(' ')[0] : 'Doador';
+  const firstLetter = firstName.charAt(0).toUpperCase();
 
   return (
     <View style={styles.container}>
-      {!!(donationsError || statsError) && (
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+
+      {!!errorMsg && (
         <ErrorModal
           title="Erro de Conexão"
-          content="Ocorreu um problema ao carregar os seus dados."
-          closeFunc={() => setErrorMsg(null)} // To-DO: criar uma função para resetar os erros dos hooks
+          content={errorMsg}
+          closeFunc={() => setErrorMsg(null)}
         />
       )}
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <HomeHeader donorName={donorName} userImage={userPhotoUrl} />
+      {/* HEADER */}
+      <View style={styles.headerContainer}>
+        <View style={styles.headerContent}>
+          <View style={styles.userInfo}>
+            <TouchableOpacity
+              style={styles.avatarBtn}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('Profile' as any)}>
+              {profile?.photo_url ? (
+                <Image
+                  source={{ uri: profile.photo_url }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Text style={styles.avatarText}>{firstLetter}</Text>
+              )}
+            </TouchableOpacity>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Minhas Estatísticas</Text>
+            <View>
+              <Text style={styles.welcomeText}>Bem-vindo de volta</Text>
+              <Text style={styles.nameText}>Olá, {firstName}!</Text>
+            </View>
+          </View>
+
+          {/* Notificações */}
+          <TouchableOpacity
+            style={styles.notificationBtn}
+            onPress={() =>
+              Alert.alert(
+                'Notificações',
+                'Sua central de notificações estará disponível em breve!',
+              )
+            }>
+            <MaterialCommunityIcons
+              name="bell-outline"
+              size={24}
+              color="#FFF"
+            />
+          </TouchableOpacity>
         </View>
+      </View>
 
-        {renderStatistics()}
-
-        <View style={styles.mainButtonContainer}>
-          <ButtonDefault
-            title="Agendar Nova Coleta"
-            fun={() => navigation.navigate('DonationStep1')}
-            color={colors.primary}
-            textColor={colors.textLight}
-            width={0.8}
-            radius={50}
-          />
-        </View>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Últimas Doações</Text>
-        </View>
-
-        <FlatList
-          horizontal
-          data={donations}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => <DonationCard item={item} />}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10 }}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>Nenhum histórico para exibir.</Text>
-          }
+      <ScrollView
+        contentContainerStyle={styles.mainContent}
+        showsVerticalScrollIndicator={false}>
+        {/* SEÇÃO DE IMPACTO */}
+        <ImpactSection
+          statistics={statistics}
+          loading={statsLoading}
+          pointsBalance={0}
         />
+
+        {/* BOTÃO DE NOVA DOAÇÃO */}
+        <View style={styles.ctaContainer}>
+          <TouchableOpacity
+            style={styles.ctaButton}
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate('DonationStep1')}>
+            <MaterialCommunityIcons name="plus" size={24} color="#FFF" />
+            <Text style={styles.ctaText}>Criar Nova Doação</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* DOAÇÕES ATIVAS */}
+        <ActiveDonations donations={donations} loading={donationsLoading} />
       </ScrollView>
     </View>
   );
@@ -170,24 +141,69 @@ export function Home() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  sectionHeader: { paddingHorizontal: 20, marginTop: 30, marginBottom: 10 },
-  sectionTitle: { color: colors.primary, fontWeight: 'bold', fontSize: 18 },
-  centeredMessage: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+
+  headerContainer: {
+    backgroundColor: colors.primary,
+    paddingTop: 60,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    zIndex: 10,
   },
-  emptyText: { color: colors.textSecondary, fontStyle: 'italic' },
-  mainButtonContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  statisticsContainer: {
+  headerContent: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
   },
+  userInfo: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+
+  avatarBtn: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  avatarImage: { width: 72, height: 72, borderRadius: 36 },
+  avatarText: { color: '#FFF', fontSize: 32, fontWeight: 'bold' },
+
+  welcomeText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+  },
+  nameText: { fontSize: 24, fontWeight: 'bold', color: '#FFF', marginTop: 2 },
+
+  notificationBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  mainContent: { padding: 20, paddingTop: 25, paddingBottom: 100 },
+
+  ctaContainer: { marginBottom: 30 },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    height: 64,
+    borderRadius: 16,
+    gap: 10,
+    elevation: 3,
+  },
+  ctaText: { color: '#FFF', fontSize: 18, fontWeight: '600' },
 });

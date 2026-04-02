@@ -12,7 +12,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Snackbar } from 'react-native-paper';
 
 import { supabase } from '@workspace/db';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 
 import { AddressCard } from '../../components/AdrressCard';
 import { RegisterAddress } from '../../components/RegisterAddress';

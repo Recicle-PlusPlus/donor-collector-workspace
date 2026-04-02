@@ -13,7 +13,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 
 import { supabase, useChat } from '@workspace/db';
 import { colors, ChatHeader, ChatBubble, ChatInput } from '@workspace/ui';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 
 export function ChatScreen() {
   const [hasKeyboardOpened, setHasKeyboardOpened] = useState(false);

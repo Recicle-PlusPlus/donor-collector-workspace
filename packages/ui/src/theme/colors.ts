@@ -1,11 +1,11 @@
 export const colors = {
   // Cores de Marca
-  primary: '#2E7D32',
+  primary: '#2D7D46',
   primaryLight: '#4CAF50',
   primaryDark: '#1B5E20',
 
   // Cores de Fundo e Superfície
-  background: '#FFFFFF',
+  background: '#F5F9F7',
   surface: '#F5F5F5',
 
   // Cores de Texto

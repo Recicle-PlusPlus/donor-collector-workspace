@@ -15,7 +15,7 @@ import { RadioButton, Button, List } from 'react-native-paper';
 import { supabase } from '@workspace/db';
 import { colors } from '@workspace/ui';
 import { RootStackParamList } from '../../navigation';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 
 type NavigationProp = NativeStackNavigationProp<
   RootStackParamList,

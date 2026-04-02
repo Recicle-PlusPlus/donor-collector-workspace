@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 import { Loading } from '@workspace/ui';
 
 import { Login } from '../screens/auth/Login';
