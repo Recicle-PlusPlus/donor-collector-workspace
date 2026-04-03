@@ -11,6 +11,7 @@ import { supabase } from '@workspace/db';
 export interface UserProfile {
   name: string;
   photo_url: string | null;
+  account_status: 'pending' | 'active' | 'blocked';
 }
 
 interface AuthContextProps {
@@ -37,12 +38,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('name, photo_url')
+        .select('name, photo_url, account_status')
         .eq('id', userId)
         .single();
 
       if (data && !error) {
-        setProfile({ name: data.name, photo_url: data.photo_url });
+        setProfile({
+          name: data.name,
+          photo_url: data.photo_url,
+          account_status: data.account_status,
+        });
       } else {
         setProfile(null);
       }

@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 import { Loading } from '@workspace/ui';
+import { AccountStatusScreen } from '@workspace/ui/src/screens/AccountStatusScreen';
 
 import { MainTabs } from './MainTabs';
 import { Login } from '../screens/auth/Login';
@@ -28,18 +29,25 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
-  // Contexto que está escutando o Supabase
-  const { user, isLoading } = useAuth();
+  const { user, profile, isLoading } = useAuth();
 
   if (isLoading) {
     return <Loading message="Carregando..." />;
+  }
+
+  if (user && profile && profile.account_status !== 'active') {
+    return (
+      <AccountStatusScreen
+        status={profile.account_status as 'pending' | 'blocked'}
+      />
+    );
   }
 
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          // Usuário logado
+          // Usuário logado e AUTORIZADO ('active')
           <Stack.Group>
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen
