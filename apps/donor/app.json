@@ -20,11 +20,18 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "com.recicleplusplus.donor",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6ec1c245-ebf0-492f-86cd-722b26cdcc38"
+      }
+    },
+    "owner": "fe.souza"
   }
 }
