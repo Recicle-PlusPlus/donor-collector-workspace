@@ -21,3 +21,5 @@ web-build/
 
 apps/*/android/
 apps/*/ios/
+
+supabase-dev/*

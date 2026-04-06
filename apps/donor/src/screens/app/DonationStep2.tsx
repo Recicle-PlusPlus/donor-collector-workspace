@@ -127,7 +127,6 @@ export function DonationStep2() {
 
       <Text style={styles.title}>Agendamento</Text>
 
-      {/* A MÁGICA ACONTECE AQUI */}
       <View style={styles.sectionCard}>
         <SchedulePicker
           schedules={schedules}
