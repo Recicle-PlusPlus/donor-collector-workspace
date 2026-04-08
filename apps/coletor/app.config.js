@@ -1,0 +1,45 @@
+import 'dotenv/config';
+
+export default {
+  expo: {
+    name: 'coletor',
+    slug: 'coletor',
+    version: '1.0.0',
+    orientation: 'portrait',
+    icon: './assets/icon.png',
+    userInterfaceStyle: 'light',
+    newArchEnabled: true,
+    splash: {
+      image: './assets/splash-icon.png',
+      resizeMode: 'contain',
+      backgroundColor: '#ffffff',
+    },
+    ios: {
+      supportsTablet: true,
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: './assets/adaptive-icon.png',
+        backgroundColor: '#ffffff',
+      },
+      package: 'com.recicleplusplus.collector',
+      edgeToEdgeEnabled: true,
+      predictiveBackGestureEnabled: false,
+      permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
+      config: {
+        googleMaps: {
+          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+        },
+      },
+    },
+    web: {
+      favicon: './assets/favicon.png',
+    },
+    extra: {
+      eas: {
+        projectId: '62936b4c-b461-4016-8454-8fb42283e965',
+      },
+    },
+    owner: 'fe.souza',
+  },
+};

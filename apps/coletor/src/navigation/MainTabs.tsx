@@ -7,6 +7,7 @@ import { Home } from '../screens/app/Home';
 import { Profile } from '../screens/app/Profile';
 import { MarketplaceScreen } from '@workspace/ui/src/marketplace/MarketplaceScreen';
 import { useAuth } from '@workspace/db/src/contexts/AuthContext';
+import MapScreen from '../screens/map/MapScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -31,6 +32,20 @@ export function MainTabs() {
           tabBarLabel: 'Início',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="recycle" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="MapScreen"
+        component={MapScreen}
+        options={{
+          tabBarLabel: 'Mapa',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons
+              name="map-marker-radius-outline"
+              color={color}
+              size={size + 4}
+            />
           ),
         }}
       />
