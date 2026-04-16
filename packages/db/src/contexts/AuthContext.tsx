@@ -35,12 +35,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
+    console.log('[DEBUG] 3. fetchProfile iniciado para o ID:', userId);
     try {
       const { data, error } = await supabase
         .from('users')
         .select('name, photo_url, account_status')
         .eq('id', userId)
         .single();
+
+      console.log(
+        '[DEBUG] 4. Retorno do Supabase em fetchProfile. Tem erro?',
+        !!error,
+      );
 
       if (data && !error) {
         setProfile({
@@ -52,37 +58,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setProfile(null);
       }
     } catch (err) {
-      console.error('Erro ao buscar perfil:', err);
+      console.error('[DEBUG] ERRO CATCH no fetchProfile:', err);
       setProfile(null);
     }
+    console.log('[DEBUG] 5. fetchProfile finalizado.');
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    console.log(
+      '[DEBUG] 1. AuthContext useEffect montado. Buscando sessão inicial...',
+    );
 
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      }
-      setIsLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        }
+        setIsLoading(false);
+      })
+      .catch(erro => {
+        console.log('[DEBUG] erro de inicialização');
+
+        setIsLoading(false);
+      });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        console.log(`[DEBUG] 7. onAuthStateChange disparado. Evento: ${event}`);
+
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
+          console.log('[DEBUG] 8. Buscando perfil via onAuthStateChange...');
           await fetchProfile(session.user.id);
         } else {
           setProfile(null);
         }
+
+        console.log(
+          '[DEBUG] 9. setando isLoading para FALSE (via onAuthStateChange)',
+        );
         setIsLoading(false);
       },
     );
 
     return () => {
+      console.log('[DEBUG] 10. Limpando listener de auth');
       authListener.subscription.unsubscribe();
     };
   }, []);
