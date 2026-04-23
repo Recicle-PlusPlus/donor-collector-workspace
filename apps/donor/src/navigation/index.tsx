@@ -12,10 +12,9 @@ import { Sign } from '../screens/auth/Sign';
 import { DonationDetailsScreen } from '../screens/app/DonationDetails';
 import { DonationStep1 } from '../screens/app/DonationStep1';
 import { DonationStep2 } from '../screens/app/DonationStep2';
-import { ChatScreen } from '../screens/app/ChatScreen';
 import { ExtractScreen } from '@workspace/ui/src/marketplace/ExtractScreen';
 import { AppNotificationsScreen } from '../screens/app/AppNotificationsScreen';
-
+import { ChatUserProfileScreen, ChatScreen } from '@workspace/ui';
 export type RootStackParamList = {
   Login: undefined;
   Sign: undefined;
@@ -26,6 +25,7 @@ export type RootStackParamList = {
   Chat: { donationId: string };
   Extrato: undefined;
   Notifications: undefined;
+  ChatUserProfile: { userId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -70,6 +70,11 @@ export function RootNavigator() {
               name="DonationStep2"
               component={DonationStep2}
               options={{ title: 'Agendamento' }}
+            />
+            <Stack.Screen
+              name="ChatUserProfile"
+              component={ChatUserProfileScreen}
+              options={{ title: 'Perfil do Coletor', headerShown: true }}
             />
             {process.env.EXPO_PUBLIC_ENABLE_MARKETPLACE === 'true' && (
               <Stack.Screen name="Extrato" options={{ headerShown: false }}>

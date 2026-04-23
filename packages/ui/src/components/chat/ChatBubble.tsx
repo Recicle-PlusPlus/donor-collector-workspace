@@ -56,10 +56,10 @@ const styles = StyleSheet.create({
   mineContainer: { justifyContent: 'flex-end' },
   otherContainer: { justifyContent: 'flex-start' },
   bubble: { maxWidth: '80%', padding: 10, borderRadius: 16, elevation: 1 },
-  mineBubble: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
+  mineBubble: { backgroundColor: '#bcf7bc', borderBottomRightRadius: 4 },
   otherBubble: { backgroundColor: colors.surface, borderBottomLeftRadius: 4 },
   text: { fontSize: 15 },
-  mineText: { color: colors.textLight },
+  mineText: { color: colors.text },
   otherText: { color: colors.text },
   footer: {
     flexDirection: 'row',
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   time: { fontSize: 11 },
-  mineTime: { color: 'rgba(255,255,255,0.7)' },
+  mineTime: { color: colors.textSecondary },
   otherTime: { color: colors.textSecondary },
   ticks: { marginLeft: 4 },
 });

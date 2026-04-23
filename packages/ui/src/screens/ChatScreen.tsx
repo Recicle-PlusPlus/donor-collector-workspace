@@ -7,19 +7,23 @@ import {
   FlatList,
   ActivityIndicator,
   Keyboard,
+  ImageBackground,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 import { supabase, useChat } from '@workspace/db';
-import { colors, ChatHeader, ChatBubble, ChatInput } from '@workspace/ui';
+import { ChatHeader } from '../components/chat/ChatHeader';
+import { ChatBubble } from '../components/chat/ChatBubble';
+import { ChatInput } from '../components/chat/ChatInput';
+import { colors } from '../theme/colors';
 import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 
 export function ChatScreen() {
   const [hasKeyboardOpened, setHasKeyboardOpened] = useState(false);
 
   const route = useRoute<any>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { donationId } = route.params;
   const { user } = useAuth();
 
@@ -31,6 +35,7 @@ export function ChatScreen() {
   } = useChat(donationId, user?.id);
 
   const [otherPerson, setOtherPerson] = useState({
+    id: '',
     name: 'Carregando...',
     photoUrl: null,
   });
@@ -63,6 +68,7 @@ export function ChatScreen() {
       if (rawData) {
         const data = rawData as any;
 
+        // Garante a extração correta independente se vier como Objeto ou Array de 1 item
         const collector = Array.isArray(data.collector)
           ? data.collector[0]
           : data.collector;
@@ -71,11 +77,16 @@ export function ChatScreen() {
         // Se eu sou o doador, mostro os dados do coletor. E vice-versa.
         if (user.id === data.donor_id && collector) {
           setOtherPerson({
+            id: data.collector_id,
             name: collector.name,
             photoUrl: collector.photo_url,
           });
         } else if (user.id === data.collector_id && donor) {
-          setOtherPerson({ name: donor.name, photoUrl: donor.photo_url });
+          setOtherPerson({
+            id: data.donor_id,
+            name: donor.name,
+            photoUrl: donor.photo_url,
+          });
         }
 
         // O chat só permite digitação se a coleta estiver "accepted"
@@ -118,14 +129,22 @@ export function ChatScreen() {
   }
 
   return (
-    <View style={styles.safeArea}>
-      <KeyboardAvoidingView style={styles.container} behavior="height">
-        <ChatHeader
-          name={otherPerson.name}
-          photoUrl={otherPerson.photoUrl}
-          onBack={() => navigation.goBack()}
-        />
+    <KeyboardAvoidingView style={styles.container} behavior="height">
+      <ChatHeader
+        name={otherPerson.name}
+        photoUrl={otherPerson.photoUrl}
+        onBack={() => navigation.goBack()}
+        onProfilePress={() => {
+          if (otherPerson.id) {
+            navigation.navigate('ChatUserProfile', { userId: otherPerson.id });
+          }
+        }}
+      />
 
+      <ImageBackground
+        source={require('../assets/images/background.png')}
+        style={{ flex: 1 }}
+        resizeMode="cover">
         <FlatList
           data={messages}
           keyExtractor={item => item.id}
@@ -137,12 +156,12 @@ export function ChatScreen() {
         <View
           style={{
             paddingBottom: hasKeyboardOpened ? 0 : insets.bottom,
-            backgroundColor: '#E5DDD5',
+            backgroundColor: '#ffffff',
           }}>
           <ChatInput onSend={sendMessage} disabled={isChatDisabled} />
         </View>
-      </KeyboardAvoidingView>
-    </View>
+      </ImageBackground>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -151,9 +170,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#E5DDD5',
   },
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

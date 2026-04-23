@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Text,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
@@ -41,49 +42,63 @@ export const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
 
   return (
     <View style={styles.container}>
-      <TextInput
-        style={styles.input}
-        placeholder="Digite uma mensagem..."
-        value={text}
-        onChangeText={setText}
-        multiline
-        maxLength={500}
-      />
-      <TouchableOpacity
-        style={[
-          styles.sendButton,
-          text.trim().length === 0 && styles.sendButtonDisabled,
-        ]}
-        onPress={handleSend}
-        disabled={text.trim().length === 0}>
-        <MaterialCommunityIcons
-          name="send"
-          size={20}
-          color={colors.textLight}
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={styles.input}
+          placeholder="Digite uma mensagem..."
+          value={text}
+          onChangeText={setText}
+          multiline
+          maxLength={500}
         />
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.sendButton,
+            text.trim().length === 0 && styles.sendButtonDisabled,
+          ]}
+          onPress={handleSend}
+          disabled={text.trim().length === 0}>
+          <MaterialCommunityIcons
+            name="send"
+            size={20}
+            color={colors.textLight}
+          />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    paddingHorizontal: 4,
+    backgroundColor: 'transparent',
+  },
+  inputWrapper: {
     flexDirection: 'row',
-    padding: 10,
-    backgroundColor: colors.background,
     alignItems: 'flex-end',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    paddingLeft: 20,
+    paddingRight: 6,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   input: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingTop: 10,
+    fontSize: 15,
+    color: '#09090B',
+    minHeight: 34,
+    maxHeight: 120,
+    paddingTop: 0,
     paddingBottom: 10,
-    minHeight: 40,
-    maxHeight: 100,
-    fontSize: 16,
-    elevation: 1,
+    marginRight: 8,
   },
   sendButton: {
     width: 44,

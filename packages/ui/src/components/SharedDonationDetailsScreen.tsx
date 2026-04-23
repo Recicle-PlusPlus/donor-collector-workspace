@@ -11,6 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface DonationDetailData {
   id: string;
@@ -79,6 +80,7 @@ export const SharedDonationDetailsScreen = ({
   onOpenChat,
 }: SharedDetailsProps) => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   if (loading || !donation) {
     return (
@@ -205,7 +207,11 @@ export const SharedDonationDetailsScreen = ({
       const canCancel = isPending || donation.status === 'accepted';
 
       return (
-        <View style={styles.actionBar}>
+        <View
+          style={[
+            styles.actionBar,
+            { paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 20 },
+          ]}>
           {canCancel && (
             <TouchableOpacity style={styles.btnOutlineError} onPress={onCancel}>
               <Text style={styles.btnOutlineErrorText}>Cancelar Doação</Text>
@@ -229,7 +235,11 @@ export const SharedDonationDetailsScreen = ({
     // COLETOR vendo a doação
     if (role === 'collector') {
       return (
-        <View style={styles.actionBar}>
+        <View
+          style={[
+            styles.actionBar,
+            { paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 20 },
+          ]}>
           {isPending && (
             <TouchableOpacity style={styles.btnPrimary} onPress={onAccept}>
               <Text style={styles.btnPrimaryText}>Aceitar Coleta</Text>

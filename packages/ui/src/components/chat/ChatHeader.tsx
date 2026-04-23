@@ -8,9 +8,15 @@ export interface ChatHeaderProps {
   name: string;
   photoUrl?: string | null;
   onBack: () => void;
+  onProfilePress?: () => void;
 }
 
-export const ChatHeader = ({ name, photoUrl, onBack }: ChatHeaderProps) => {
+export const ChatHeader = ({
+  name,
+  photoUrl,
+  onBack,
+  onProfilePress,
+}: ChatHeaderProps) => {
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -21,21 +27,26 @@ export const ChatHeader = ({ name, photoUrl, onBack }: ChatHeaderProps) => {
         />
       </TouchableOpacity>
 
-      <View style={styles.avatarContainer}>
-        {photoUrl ? (
-          <Image source={{ uri: photoUrl }} style={styles.avatar} />
-        ) : (
-          <MaterialCommunityIcons
-            name="account"
-            size={24}
-            color={colors.primary}
-          />
-        )}
-      </View>
+      <TouchableOpacity
+        style={styles.profileSection}
+        onPress={onProfilePress}
+        disabled={!onProfilePress}>
+        <View style={styles.avatarContainer}>
+          {photoUrl ? (
+            <Image source={{ uri: photoUrl }} style={styles.avatar} />
+          ) : (
+            <MaterialCommunityIcons
+              name="account"
+              size={24}
+              color={colors.primary}
+            />
+          )}
+        </View>
 
-      <Text style={styles.name} numberOfLines={1}>
-        {name}
-      </Text>
+        <Text style={styles.name} numberOfLines={1}>
+          {name}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -50,6 +61,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   backButton: { padding: 5 },
+  profileSection: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   avatarContainer: {
     width: 40,
     height: 40,
