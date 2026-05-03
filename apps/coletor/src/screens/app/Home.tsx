@@ -110,7 +110,9 @@ export function Home() {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.notificationBtn}>
+          <TouchableOpacity
+            style={styles.notificationBtn}
+            onPress={() => navigation.navigate('Notifications')}>
             <MaterialCommunityIcons
               name="bell-outline"
               size={24}

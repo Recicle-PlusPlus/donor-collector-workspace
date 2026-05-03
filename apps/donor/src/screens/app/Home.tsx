@@ -96,12 +96,7 @@ export function Home() {
           {/* Notificações */}
           <TouchableOpacity
             style={styles.notificationBtn}
-            onPress={() =>
-              Alert.alert(
-                'Notificações',
-                'Sua central de notificações estará disponível em breve!',
-              )
-            }>
+            onPress={() => navigation.navigate('Notifications')}>
             <MaterialCommunityIcons
               name="bell-outline"
               size={24}

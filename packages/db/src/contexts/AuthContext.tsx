@@ -6,7 +6,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@workspace/db';
+import { supabase } from '../client';
 
 export interface UserProfile {
   name: string;

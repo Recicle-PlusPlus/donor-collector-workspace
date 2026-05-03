@@ -13,6 +13,7 @@ import { MainTabs } from './MainTabs';
 import { ChatScreen } from '../screens/app/ChatScreen';
 import { ExtractScreen } from '@workspace/ui/src/marketplace/ExtractScreen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AppNotificationsScreen } from '../screens/app/AppNotificationsScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -22,6 +23,7 @@ export type RootStackParamList = {
   Profile: undefined;
   Chat: { donationId: string };
   Extrato: undefined;
+  Notifications: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -64,6 +66,11 @@ export function RootNavigator() {
                   {() => <ExtractScreen userId={user?.id || ''} />}
                 </Stack.Screen>
               )}
+              <Stack.Screen
+                name="Notifications"
+                component={AppNotificationsScreen}
+                options={{ headerShown: false }}
+              />
             </Stack.Group>
           ) : (
             // Usuário não logado

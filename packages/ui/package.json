@@ -4,6 +4,7 @@
   "main": "src/index.ts",
   "private": true,
   "dependencies": {
-    "react-native-mask-text": "^0.15.0"
+    "react-native-mask-text": "^0.15.0",
+    "react-native-safe-area-context": "~5.6.2"
   }
 }
