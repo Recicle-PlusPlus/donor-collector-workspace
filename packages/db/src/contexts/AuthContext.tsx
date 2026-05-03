@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../client';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 export interface UserProfile {
   name: string;
@@ -33,6 +34,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const { expoPushToken, saveTokenToDatabase } = usePushNotifications();
+  useEffect(() => {
+    if (user?.id && expoPushToken) {
+      saveTokenToDatabase(user.id, expoPushToken);
+    }
+  }, [user?.id, expoPushToken]);
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -84,7 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         );
         setIsLoading(false);
       }
-    }, 5000);
+    }, 15000);
 
     const carregarSessaoInicial = async () => {
       try {
