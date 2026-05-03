@@ -42,47 +42,111 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', userId)
         .single();
 
-      if (data && !error) {
-        setProfile({
-          name: data.name,
-          photo_url: data.photo_url,
-          account_status: data.account_status,
-        });
-      } else {
+      if (error) {
+        console.error(
+          `[AuthContext - ERROR] Falha no banco ao buscar perfil (${userId}):`,
+          error.message,
+          error.details,
+        );
         setProfile(null);
+        return;
       }
-    } catch (err) {
-      console.error('Erro ao buscar perfil:', err);
+
+      if (!data) {
+        console.warn(
+          `[AuthContext - WARN] Usuário autenticado, mas nenhum perfil encontrado na tabela 'users' para o ID: ${userId}`,
+        );
+        setProfile(null);
+        return;
+      }
+
+      setProfile({
+        name: data.name,
+        photo_url: data.photo_url,
+        account_status: data.account_status,
+      });
+    } catch (err: any) {
+      console.error(
+        '[AuthContext - FATAL] Exceção não tratada ao buscar perfil:',
+        err.message || err,
+      );
       setProfile(null);
     }
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    let montado = true;
 
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+    const fallbackTimeout = setTimeout(() => {
+      if (montado) {
+        console.warn(
+          '[AuthContext - TIMEOUT] A inicialização demorou muito. Forçando destravamento da tela para evitar congelamento.',
+        );
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    });
+    }, 5000);
+
+    const carregarSessaoInicial = async () => {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error(
+            '[AuthContext - ERROR] Falha ao ler a sessão local no getSession:',
+            error.message,
+          );
+        }
+
+        if (montado) {
+          setSession(session);
+          setUser(session?.user ?? null);
+
+          if (session?.user) {
+            await fetchProfile(session.user.id);
+          }
+        }
+      } catch (err: any) {
+        console.error(
+          '[AuthContext - FATAL] Erro catastrófico no carregamento da sessão. Verifique AsyncStorage/Polyfills:',
+          err.message || err,
+        );
+      } finally {
+        if (montado) {
+          clearTimeout(fallbackTimeout);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    carregarSessaoInicial();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      async (event, session) => {
+        if (event === 'TOKEN_REFRESHED')
+          console.log('[AuthContext - INFO] Token JWT renovado com sucesso.');
 
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        } else {
-          setProfile(null);
+        if (event === 'INITIAL_SESSION') return;
+
+        if (montado) {
+          setSession(session);
+          setUser(session?.user ?? null);
+
+          if (session?.user) {
+            await fetchProfile(session.user.id);
+          } else {
+            setProfile(null);
+          }
+          setIsLoading(false);
         }
-        setIsLoading(false);
       },
     );
 
     return () => {
+      montado = false;
+      clearTimeout(fallbackTimeout);
       authListener.subscription.unsubscribe();
     };
   }, []);

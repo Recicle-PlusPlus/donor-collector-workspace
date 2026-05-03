@@ -2,7 +2,8 @@
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",
-    "lib": ["esnext"],
+    "lib": ["es2015", "dom"],
+    "types": ["node"],
     "jsx": "react-native",
     "strict": true,
     "esModuleInterop": true,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../index';
+import { supabase } from '../client';
 
 export interface Message {
   id: string;
