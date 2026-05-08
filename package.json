@@ -8,13 +8,14 @@
   "devDependencies": {
     "@types/react": "^19.2.14",
     "prettier": "^3.8.1",
-    "supabase": "^2.84.10"
+    "supabase": "^2.98.0"
   },
   "scripts": {
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "dependencies": {
     "expo-constants": "~55.0.15",
+    "expo-dev-client": "~55.0.30",
     "expo-device": "~55.0.15",
     "expo-location": "~19.0.8",
     "expo-notifications": "~55.0.22",
