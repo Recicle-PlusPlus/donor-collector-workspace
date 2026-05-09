@@ -12,7 +12,6 @@ import { DonationAccept } from '../screens/app/DonationAccept';
 import { MainTabs } from './MainTabs';
 import { ChatScreen } from '../screens/app/ChatScreen';
 import { ExtractScreen } from '@workspace/ui/src/marketplace/ExtractScreen';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppNotificationsScreen } from '../screens/app/AppNotificationsScreen';
 
 export type RootStackParamList = {
@@ -44,43 +43,41 @@ export function RootNavigator() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {user ? (
-            // Usuário logado e AUTORIZADO ('active')
-            <Stack.Group>
-              <Stack.Screen name="Main" component={MainTabs} />
-              <Stack.Screen
-                name="Chat"
-                component={ChatScreen}
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="DonationAccept"
-                component={DonationAccept}
-                options={{ headerShown: true, title: 'Detalhes da Coleta' }}
-              />
-              {process.env.EXPO_PUBLIC_ENABLE_MARKETPLACE === 'true' && (
-                <Stack.Screen name="Extrato" options={{ headerShown: false }}>
-                  {() => <ExtractScreen userId={user?.id || ''} />}
-                </Stack.Screen>
-              )}
-              <Stack.Screen
-                name="Notifications"
-                component={AppNotificationsScreen}
-                options={{ headerShown: false }}
-              />
-            </Stack.Group>
-          ) : (
-            // Usuário não logado
-            <Stack.Group>
-              <Stack.Screen name="Login" component={Login} />
-              <Stack.Screen name="Sign" component={Sign} />
-            </Stack.Group>
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
-    </GestureHandlerRootView>
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {user ? (
+          // Usuário logado e AUTORIZADO ('active')
+          <Stack.Group>
+            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen
+              name="Chat"
+              component={ChatScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="DonationAccept"
+              component={DonationAccept}
+              options={{ headerShown: true, title: 'Detalhes da Coleta' }}
+            />
+            {process.env.EXPO_PUBLIC_ENABLE_MARKETPLACE === 'true' && (
+              <Stack.Screen name="Extrato" options={{ headerShown: false }}>
+                {() => <ExtractScreen userId={user?.id || ''} />}
+              </Stack.Screen>
+            )}
+            <Stack.Screen
+              name="Notifications"
+              component={AppNotificationsScreen}
+              options={{ headerShown: false }}
+            />
+          </Stack.Group>
+        ) : (
+          // Usuário não logado
+          <Stack.Group>
+            <Stack.Screen name="Login" component={Login} />
+            <Stack.Screen name="Sign" component={Sign} />
+          </Stack.Group>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }

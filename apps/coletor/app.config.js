@@ -4,15 +4,16 @@ export default {
   expo: {
     name: 'coletor',
     slug: 'coletor',
+    scheme: 'collector',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
     newArchEnabled: true,
     splash: {
-      image: './assets/splash-icon.png',
+      image: './assets/adaptive-icon.png',
       resizeMode: 'contain',
-      backgroundColor: '#ffffff',
+      backgroundColor: '#2D7D46',
     },
     ios: {
       supportsTablet: true,
@@ -20,9 +21,10 @@ export default {
     android: {
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
-        backgroundColor: '#ffffff',
+        backgroundColor: '#2D7D46',
       },
       package: 'com.recicleplusplus.collector',
+      googleServicesFile: './google-services.json',
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
@@ -41,5 +43,21 @@ export default {
       },
     },
     owner: 'fe.souza',
+    plugins: [
+      [
+        'expo-notifications',
+        {
+          icon: './assets/icon.png',
+          color: '#ffffff',
+        },
+      ],
+      [
+        'expo-location',
+        {
+          locationAlwaysAndWhenInUsePermission:
+            'Necessário para mostrar as doações próximas a você.',
+        },
+      ],
+    ],
   },
 };
