@@ -31,6 +31,7 @@ export default {
           apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
         },
       },
+      googleServicesFile: './google-services.json',
     },
     web: {
       favicon: './assets/favicon.png',
