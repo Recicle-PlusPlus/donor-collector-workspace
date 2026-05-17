@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -15,7 +16,6 @@ import { supabase } from '@workspace/db';
 import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 
 import { AddressCard } from '../../components/AdrressCard';
-import { RegisterAddress } from '../../components/RegisterAddress';
 
 import {
   colors,
@@ -27,6 +27,7 @@ import {
 
 export function Profile() {
   const { user } = useAuth();
+  const navigation = useNavigation<any>();
 
   const [editProf, setEditProf] = useState(false);
   const [name, setName] = useState('');
@@ -76,6 +77,12 @@ export function Profile() {
       .eq('user_id', user.id);
     if (data) setAddresses(data);
   }
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAddresses();
+    }, [user]),
+  );
 
   const showSnackbar = (message: string, isError = false) => {
     setSnackbar({ visible: true, message, isError });
@@ -135,7 +142,6 @@ export function Profile() {
     }
   }
 
-  // --- FUNÇÕES DE PERFIL ---
   async function confirmChanges() {
     if (!name || !phone) {
       showSnackbar('Preencha todos os campos', true);
@@ -160,12 +166,7 @@ export function Profile() {
     await supabase.auth.signOut();
   }
 
-  // --- FUNÇÕES DE ENDEREÇO ---
-  function openAddressModal(addr = null) {
-    setAddressToEdit(addr);
-    setRegister(true);
-  }
-
+  // TO-DO: change to a soft delete
   async function removeAddress(addressId: string) {
     setLoading(true);
     try {
@@ -179,27 +180,9 @@ export function Profile() {
     }
   }
 
-  function handleAddressSaved(isEditing: boolean) {
-    setRegister(false); // Fecha o modal
-    fetchAddresses(); // Busca os endereços atualizados do banco
-    showSnackbar(
-      isEditing
-        ? 'Endereço alterado com sucesso!'
-        : 'Endereço adicionado com sucesso!',
-    );
-  }
-
   return (
     <View style={styles.container}>
       {loading && <Loading />}
-
-      {register && (
-        <RegisterAddress
-          addressToEdit={addressToEdit}
-          closeFunc={() => setRegister(false)}
-          onSaveCallback={handleAddressSaved}
-        />
-      )}
 
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={styles.header}>
@@ -295,7 +278,8 @@ export function Profile() {
         <View style={styles.addressContainer}>
           <View style={styles.rowBetween}>
             <Text style={styles.sectionTitle}>Endereços</Text>
-            <TouchableOpacity onPress={() => openAddressModal()}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('RegisterAddress')}>
               <MaterialCommunityIcons
                 name="plus"
                 size={28}
@@ -311,7 +295,11 @@ export function Profile() {
               <AddressCard
                 key={address.id}
                 address={address}
-                onEdit={() => openAddressModal(address)}
+                onEdit={() =>
+                  navigation.navigate('RegisterAddress', {
+                    addressToEdit: address,
+                  })
+                }
                 onDelete={() => removeAddress(address.id)}
               />
             ))
