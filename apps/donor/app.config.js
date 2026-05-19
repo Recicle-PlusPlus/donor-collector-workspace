@@ -58,6 +58,7 @@ export default {
             'Necessário para definir com precisão o endereço de coleta das suas doações.',
         },
       ],
+      ['@react-native-community/datetimepicker'],
     ],
   },
 };

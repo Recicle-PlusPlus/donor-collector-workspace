@@ -1,58 +1,109 @@
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import { Text, StyleSheet, ScrollView, TextInput, View } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  Alert,
+} from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Button, List, ActivityIndicator, Snackbar } from 'react-native-paper';
-
-import { supabase } from '@workspace/db';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import {
+  ArrowLeft,
+  MapPin,
+  Package,
+  CalendarDays,
+  FileText,
+  CheckCircle2,
+  Trash2,
+  Clock,
+  Plus,
+} from 'lucide-react-native';
 import { colors } from '@workspace/ui';
+import { supabase } from '@workspace/db';
 import { RootStackParamList } from '../../navigation';
 
-import { SchedulePicker, Schedule } from '../../components/SchedulerPicker';
+const DAYS_OF_WEEK = [
+  { id: 0, label: 'Dom', full: 'Domingo' },
+  { id: 1, label: 'Seg', full: 'Segunda-feira' },
+  { id: 2, label: 'Ter', full: 'Terça-feira' },
+  { id: 3, label: 'Qua', full: 'Quarta-feira' },
+  { id: 4, label: 'Qui', full: 'Quinta-feira' },
+  { id: 5, label: 'Sex', full: 'Sexta-feira' },
+  { id: 6, label: 'Sáb', full: 'Sábado' },
+];
 
-type Step2RouteProp = RouteProp<RootStackParamList, 'DonationStep2'>;
-type NavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  'DonationStep2'
->;
+interface ScheduleInterval {
+  day_of_week: number;
+  start_time: Date;
+  end_time: Date;
+}
 
 export function DonationStep2() {
-  const navigation = useNavigation<NavigationProp>();
-  const route = useRoute<Step2RouteProp>();
-
-  const insets = useSafeAreaInsets();
-
+  const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<RootStackParamList, 'DonationStep2'>>();
   const { address, materials } = route.params;
 
   const [notes, setNotes] = useState('');
-
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-
+  const [schedules, setSchedules] = useState<ScheduleInterval[]>([]);
   const [loading, setLoading] = useState(false);
-  const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
 
-  async function handleConfirmDonation() {
-    if (schedules.length === 0) {
-      setSnackbar({
-        visible: true,
-        message: 'Adicione pelo menos um horário disponível.',
-      });
-      return;
+  const [isAdding, setIsAdding] = useState(false);
+  const [newDay, setNewDay] = useState(1);
+  const [newStart, setNewStart] = useState(
+    new Date(new Date().setHours(8, 0, 0, 0)),
+  );
+  const [newEnd, setNewEnd] = useState(
+    new Date(new Date().setHours(18, 0, 0, 0)),
+  );
+
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<'start' | 'end'>('start');
+
+  const totalWeight = materials.reduce((acc, m) => acc + Number(m.weight), 0);
+
+  const onTimeChange = (event: any, selectedTime?: Date) => {
+    setShowPicker(false);
+    if (event.type === 'dismissed' || !selectedTime) return;
+
+    if (pickerTarget === 'start') {
+      setNewStart(selectedTime);
+    } else {
+      setNewEnd(selectedTime);
     }
+  };
 
+  const handleAddSchedule = () => {
+    setSchedules(prev => [
+      ...prev,
+      { day_of_week: newDay, start_time: newStart, end_time: newEnd },
+    ]);
+    setIsAdding(false);
+  };
+
+  const executeDonation = async () => {
     setLoading(true);
 
-    // Formata os horários (HH:MM:SS)
+    // Formata a hora
     const formattedSchedules = schedules.map(s => ({
       day_of_week: s.day_of_week,
-      start_time: `${s.start_time}:00`,
-      end_time: `${s.end_time}:00`,
+      start_time: s.start_time.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }),
+      end_time: s.end_time.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }),
     }));
 
     const donationData = {
       p_address_id: address.id,
-      p_materials: materials,
+      p_materials: materials, // [{ materialId, weight }]
       p_notes: notes,
       p_schedules: formattedSchedules,
     };
@@ -61,168 +112,437 @@ export function DonationStep2() {
       'create_donation_request_v2',
       donationData,
     );
-
     setLoading(false);
 
     if (error) {
-      console.error('Erro ao criar doação:', error);
-      setSnackbar({
-        visible: true,
-        message: 'Erro ao agendar a coleta. Tente novamente.',
-      });
+      Alert.alert(
+        'Erro',
+        'Ocorreu um erro ao agendar a doação. Tente novamente.',
+      );
+      console.log(error);
     } else {
       navigation.navigate('Main', {
         refresh: true,
         snackbarMessage: 'Coleta agendada com sucesso!',
       });
     }
-  }
+  };
+
+  const handleConfirmIntent = () => {
+    if (schedules.length === 0) {
+      Alert.alert('Atenção', 'Adicione pelo menos um horário disponível.');
+      return;
+    }
+
+    if (schedules.length < 3) {
+      Alert.alert(
+        'Aumente suas chances!',
+        'Você cadastrou menos de 3 opções de horário. Ter uma janela maior e mais opções de dias ajuda os coletores a aceitarem sua doação mais rápido.\n\nDeseja adicionar mais horários?',
+        [
+          { text: 'Sim, adicionar mais', style: 'cancel' },
+          { text: 'Continuar mesmo assim', onPress: executeDonation },
+        ],
+      );
+    } else {
+      executeDonation();
+    }
+  };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}>
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator
-            animating={true}
-            size="large"
-            color={colors.primary}
-          />
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}>
+          <ArrowLeft color="#4b5563" size={24} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerSubtitle}>Etapa 2 de 2</Text>
+          <Text style={styles.headerTitle}>Resumo e Agendamento</Text>
         </View>
-      )}
-
-      <Text style={styles.title}>Resumo da Coleta</Text>
-
-      <List.Section style={styles.sectionCard}>
-        <List.Subheader style={styles.subheader}>
-          Local de Retirada
-        </List.Subheader>
-        <List.Item
-          style={{ paddingLeft: 15 }}
-          title={`${address.street}, ${address.num}`}
-          description={`${address.neighborhood} - ${address.city}`}
-          titleStyle={styles.listItemTitle}
-          descriptionStyle={styles.listItemDescription}
-          left={() => <List.Icon icon="map-marker" color={colors.primary} />}
-        />
-      </List.Section>
-
-      <List.Section style={styles.sectionCard}>
-        <List.Subheader style={styles.subheader}>
-          Materiais Separados
-        </List.Subheader>
-        {materials.map((mat: any) => (
-          <List.Item
-            style={{ paddingLeft: 15 }}
-            key={mat.materialId}
-            title={mat.materialName}
-            description={`${mat.weight} kg`}
-            titleStyle={styles.listItemTitle}
-            descriptionStyle={styles.listItemDescription}
-            left={() => <List.Icon icon="recycle" color={colors.primary} />}
-          />
-        ))}
-      </List.Section>
-
-      <Text style={styles.title}>Agendamento</Text>
-
-      <View style={styles.sectionCard}>
-        <SchedulePicker
-          schedules={schedules}
-          onAddSchedule={newSchedule =>
-            setSchedules([...schedules, newSchedule])
-          }
-          onRemoveSchedule={index => {
-            const newSchedules = [...schedules];
-            newSchedules.splice(index, 1);
-            setSchedules(newSchedules);
-          }}
-        />
+        <View style={styles.stepIndicator}>
+          <View style={[styles.stepDot, { backgroundColor: colors.primary }]} />
+          <View style={[styles.stepDot, { backgroundColor: colors.primary }]} />
+        </View>
       </View>
 
-      <Text style={styles.title}>Observações Adicionais</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ex: Pegar na portaria, material em 3 sacolas, avisar quando estiver vindo..."
-        placeholderTextColor={colors.textSecondary}
-        value={notes}
-        onChangeText={setNotes}
-        multiline
-      />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Endereço Resumo */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <MapPin color={colors.primary} size={16} />
+            <Text style={styles.sectionTitle}>Endereço</Text>
+          </View>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>
+              {address.street}, {address.number}
+            </Text>
+            <Text style={styles.cardSubtitle}>
+              {address.neighborhood} - {address.city}
+            </Text>
+          </View>
+        </View>
 
-      <Button
-        style={styles.navButton}
-        mode="contained"
-        onPress={handleConfirmDonation}
-        disabled={loading || schedules.length === 0}
-        buttonColor={colors.primary}
-        textColor={colors.textLight}
-        icon="check-circle-outline">
-        Confirmar Agendamento
-      </Button>
+        {/* Materiais Resumo */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Package color={colors.primary} size={16} />
+            <Text style={styles.sectionTitle}>Materiais</Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>~{totalWeight}kg</Text>
+            </View>
+          </View>
+          <View style={styles.card}>
+            <View style={styles.tagsContainer}>
+              {materials.map((m, i) => (
+                <View key={i} style={styles.tag}>
+                  <Text style={styles.tagText}>{m.materialName}</Text>
+                  <Text style={styles.tagWeight}>{m.weight}kg</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
 
-      <Snackbar
-        visible={snackbar.visible}
-        onDismiss={() => setSnackbar({ ...snackbar, visible: false })}
-        style={{ backgroundColor: colors.surface }}
-        theme={{ colors: { onSurface: colors.text } }}>
-        {snackbar.message}
-      </Snackbar>
-    </ScrollView>
+        {/* Intervalos de Agendamento */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <CalendarDays color={colors.primary} size={16} />
+            <Text style={styles.sectionTitle}>Disponibilidade de Horários</Text>
+          </View>
+
+          <View style={styles.card}>
+            {schedules.map((sched, idx) => (
+              <View key={idx} style={styles.scheduleRow}>
+                <View>
+                  <Text style={styles.scheduleText}>
+                    {DAYS_OF_WEEK[sched.day_of_week].full}
+                  </Text>
+                  <Text style={styles.scheduleSub}>
+                    Das{' '}
+                    {sched.start_time.toLocaleTimeString('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}{' '}
+                    às{' '}
+                    {sched.end_time.toLocaleTimeString('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() =>
+                    setSchedules(prev => prev.filter((_, i) => i !== idx))
+                  }>
+                  <Trash2 color="#ef4444" size={20} />
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            {isAdding ? (
+              <View style={styles.addForm}>
+                <Text style={styles.formLabel}>Dia da Semana</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ marginBottom: 15 }}>
+                  {DAYS_OF_WEEK.map(d => (
+                    <TouchableOpacity
+                      key={d.id}
+                      onPress={() => setNewDay(d.id)}
+                      style={[
+                        styles.dayChip,
+                        newDay === d.id && styles.dayChipActive,
+                      ]}>
+                      <Text
+                        style={[
+                          styles.dayChipText,
+                          newDay === d.id && { color: '#fff' },
+                        ]}>
+                        {d.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                <View style={styles.timeRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.formLabel}>Início</Text>
+                    <TouchableOpacity
+                      style={styles.timeBtn}
+                      onPress={() => {
+                        setPickerTarget('start');
+                        setShowPicker(true);
+                      }}>
+                      <Clock size={16} color={colors.primary} />
+                      <Text style={styles.timeBtnText}>
+                        {newStart.toLocaleTimeString('pt-BR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.formLabel}>Fim</Text>
+                    <TouchableOpacity
+                      style={styles.timeBtn}
+                      onPress={() => {
+                        setPickerTarget('end');
+                        setShowPicker(true);
+                      }}>
+                      <Clock size={16} color={colors.primary} />
+                      <Text style={styles.timeBtnText}>
+                        {newEnd.toLocaleTimeString('pt-BR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.formActions}>
+                  <TouchableOpacity
+                    onPress={() => setIsAdding(false)}
+                    style={styles.cancelBtn}>
+                    <Text style={styles.cancelBtnText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleAddSchedule}
+                    style={styles.saveBtn}>
+                    <Text style={styles.saveBtnText}>Salvar Horário</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.addScheduleBtn}
+                onPress={() => setIsAdding(true)}>
+                <Plus color={colors.primary} size={20} />
+                <Text style={styles.addScheduleText}>Adicionar Intervalo</Text>
+              </TouchableOpacity>
+            )}
+
+            {showPicker && (
+              <DateTimePicker
+                value={pickerTarget === 'start' ? newStart : newEnd}
+                mode="time"
+                is24Hour={true}
+                display="default"
+                onChange={onTimeChange}
+              />
+            )}
+          </View>
+        </View>
+
+        {/* Observações */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <FileText color={colors.primary} size={16} />
+            <Text style={styles.sectionTitle}>
+              Observações{' '}
+              <Text style={{ fontWeight: 'normal', color: '#9ca3af' }}>
+                (opcional)
+              </Text>
+            </Text>
+          </View>
+          <TextInput
+            style={styles.textArea}
+            placeholder="Ex: Pegar na portaria, material em 3 sacolas..."
+            placeholderTextColor="#9ca3af"
+            multiline
+            numberOfLines={4}
+            value={notes}
+            onChangeText={setNotes}
+          />
+        </View>
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          disabled={loading}
+          onPress={handleConfirmIntent}>
+          <CheckCircle2 color="#fff" size={20} />
+          <Text style={styles.primaryButtonText}>
+            {loading ? 'Aguarde...' : 'Confirmar Doação'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
+// Estilos
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    paddingTop: 40,
-    backgroundColor: colors.background,
+  container: { flex: 1, backgroundColor: '#ffffff' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderColor: '#f3f4f6',
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginTop: 10,
-    marginBottom: 8,
-    color: colors.primaryDark,
-  },
-  subheader: { color: colors.textSecondary, fontWeight: 'bold' },
-  sectionCard: {
-    backgroundColor: colors.surface,
+  backButton: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    paddingBottom: 10,
-    marginBottom: 15,
-    elevation: 1,
-  },
-  listItemTitle: { color: colors.text, fontWeight: 'bold' },
-  listItemDescription: { color: colors.textSecondary },
-  input: {
-    backgroundColor: colors.surface,
-    color: colors.text,
-    padding: 15,
-    borderRadius: 12,
-    minHeight: 100,
-    textAlignVertical: 'top',
     borderWidth: 1,
-    borderColor: '#eee',
-    marginBottom: 20,
-  },
-  navButton: {
-    marginTop: 10,
-    marginBottom: 40,
-    paddingVertical: 5,
-    borderRadius: 25,
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    zIndex: 10,
+    borderColor: '#e5e7eb',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 15,
   },
+  headerSubtitle: { fontSize: 12, color: '#6b7280', fontWeight: '500' },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
+  stepIndicator: { flexDirection: 'row', gap: 6 },
+  stepDot: { width: 32, height: 6, borderRadius: 3 },
+  scrollContent: { padding: 20, paddingBottom: 100 },
+  section: { marginBottom: 24 },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  sectionTitle: { fontSize: 14, fontWeight: 'bold', color: '#111827' },
+  badge: {
+    marginLeft: 'auto',
+    backgroundColor: `${colors.primary}20`,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  badgeText: { fontSize: 12, color: colors.primary, fontWeight: 'bold' },
+  card: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 16,
+    padding: 16,
+  },
+  cardTitle: { fontSize: 14, fontWeight: 'bold', color: '#111827' },
+  cardSubtitle: { fontSize: 12, color: '#6b7280', marginTop: 4 },
+  tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 6,
+  },
+  tagText: { fontSize: 14, fontWeight: '500', color: '#111827' },
+  tagWeight: { fontSize: 12, color: '#6b7280' },
+
+  scheduleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+  },
+  scheduleText: { fontSize: 14, fontWeight: 'bold', color: '#111827' },
+  scheduleSub: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  addScheduleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 12,
+    backgroundColor: `${colors.primary}05`,
+  },
+  addScheduleText: { color: colors.primary, fontWeight: 'bold', fontSize: 14 },
+
+  // Formulário Inline de Horário
+  addForm: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  formLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginBottom: 8,
+  },
+  dayChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#e5e7eb',
+    marginRight: 8,
+  },
+  dayChipActive: { backgroundColor: colors.primary },
+  dayChipText: { fontSize: 12, fontWeight: '600', color: '#4b5563' },
+  timeRow: { flexDirection: 'row', gap: 12, marginBottom: 15 },
+  timeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  timeBtnText: { fontSize: 14, fontWeight: 'bold', color: '#111827' },
+  formActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
+  cancelBtn: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 8 },
+  cancelBtnText: { color: '#6b7280', fontWeight: 'bold' },
+  saveBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  saveBtnText: { color: '#fff', fontWeight: 'bold' },
+
+  textArea: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 16,
+    padding: 16,
+    height: 100,
+    textAlignVertical: 'top',
+    fontSize: 14,
+    color: '#111827',
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    padding: 20,
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    height: 56,
+    borderRadius: 16,
+  },
+  primaryButtonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
 });

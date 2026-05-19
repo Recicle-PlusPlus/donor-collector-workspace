@@ -1,263 +1,481 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
+  ScrollView,
   TouchableOpacity,
-  FlatList,
-  Modal,
-  TextInput,
+  StyleSheet,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RadioButton, Button, List } from 'react-native-paper';
-
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import {
+  ArrowLeft,
+  MapPin,
+  Check,
+  Minus,
+  Plus,
+  ChevronRight,
+  PlusCircle,
+  Recycle,
+} from 'lucide-react-native';
 import { supabase } from '@workspace/db';
-import { colors } from '@workspace/ui';
-import { RootStackParamList } from '../../navigation';
 import { useAuth } from '@workspace/db/src/contexts/AuthContext';
+import { colors } from '@workspace/ui';
 
-type NavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  'DonationStep1'
->;
+interface Material {
+  id: string;
+  name: string;
+  icon_url: string | null;
+  kg: number;
+  selected: boolean;
+}
 
 export function DonationStep1() {
-  const navigation = useNavigation<NavigationProp>();
+  const navigation = useNavigation<any>();
   const { user } = useAuth();
 
   const [addresses, setAddresses] = useState<any[]>([]);
-  const [allMaterials, setAllMaterials] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<Material[]>([]);
 
-  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
-  const [materialsList, setMaterialsList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
 
-  const [isModalVisible, setModalVisible] = useState(false);
-  const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
-  const [weight, setWeight] = useState('');
+  useFocusEffect(
+    useCallback(() => {
+      async function fetchData() {
+        if (!user) return;
+        setLoading(true);
 
-  // Busca os endereços do usuário e os materiais
-  useEffect(() => {
-    async function fetchData() {
-      if (!user) return;
+        const { data: addrs } = await supabase
+          .from('addresses')
+          .select('*')
+          .eq('user_id', user.id);
+        if (addrs) {
+          setAddresses(addrs);
+          if (addrs.length > 0 && !selectedAddress)
+            setSelectedAddress(addrs[0].id);
+        }
 
-      const { data: addressData } = await supabase
-        .from('addresses')
-        .select('*')
-        .eq('user_id', user.id);
-      if (addressData) setAddresses(addressData);
+        const { data: mats } = await supabase
+          .from('materials')
+          .select('*')
+          .eq('active', true);
+        if (mats) {
+          const formattedMats = mats.map(m => ({
+            id: m.id,
+            name: m.name,
+            icon_url: m.icon_url,
+            kg: 0,
+            selected: false,
+          }));
+          setMaterials(formattedMats);
+        }
 
-      const { data: materialData } = await supabase
-        .from('materials')
-        .select('*')
-        .eq('active', true);
-      if (materialData) setAllMaterials(materialData);
-    }
-    fetchData();
-  }, [user]);
-
-  const handleSaveMaterial = () => {
-    if (selectedMaterial && weight) {
-      // Verifica se já existe e atualiza, senão adiciona novo
-      const existingIndex = materialsList.findIndex(
-        m => m.materialId === selectedMaterial.id,
-      );
-      let newList = [...materialsList];
-
-      if (existingIndex >= 0) {
-        newList[existingIndex].weight = parseFloat(weight);
-      } else {
-        newList.push({
-          materialId: selectedMaterial.id,
-          materialName: selectedMaterial.name,
-          weight: parseFloat(weight),
-        });
+        setLoading(false);
       }
+      fetchData();
+    }, [user]),
+  );
 
-      setMaterialsList(newList);
-      setModalVisible(false);
-      setSelectedMaterial(null);
-      setWeight('');
-    }
+  const toggleMaterial = (id: string) => {
+    setMaterials(prev =>
+      prev.map(m =>
+        m.id === id
+          ? {
+              ...m,
+              selected: !m.selected,
+              kg: !m.selected ? Math.max(m.kg, 1) : 0,
+            }
+          : m,
+      ),
+    );
   };
 
-  const handleRemoveMaterial = (materialId: string) => {
-    setMaterialsList(prev => prev.filter(m => m.materialId !== materialId));
+  const updateKg = (id: string, delta: number) => {
+    setMaterials(prev =>
+      prev.map(m =>
+        m.id === id ? { ...m, kg: Math.max(1, m.kg + delta) } : m,
+      ),
+    );
   };
 
-  const handleNextStep = () => {
-    const selectedAddressObj = addresses.find(a => a.id === selectedAddressId);
-    // Passa o bastão para a Etapa 2!
-    navigation.navigate('DonationStep2', {
-      address: selectedAddressObj,
-      materials: materialsList,
-    });
+  const selectedMaterials = materials.filter(m => m.selected);
+  const canProceed = selectedAddress && selectedMaterials.length > 0;
+
+  const handleNext = () => {
+    if (!canProceed) return;
+    const addr = addresses.find(a => a.id === selectedAddress);
+    const mats = selectedMaterials.map(m => ({
+      materialId: m.id,
+      materialName: m.name,
+      weight: m.kg,
+    }));
+
+    navigation.navigate('DonationStep2', { address: addr, materials: mats });
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Onde será a coleta?</Text>
-      {addresses.length === 0 ? (
-        <Text style={styles.emptyText}>
-          Nenhum endereço cadastrado no seu perfil.
-        </Text>
-      ) : (
-        <RadioButton.Group
-          onValueChange={setSelectedAddressId}
-          value={selectedAddressId}>
-          {addresses.map(addr => (
-            <View key={addr.id} style={styles.radioItem}>
-              <RadioButton value={addr.id} color={colors.primary} />
-              <Text
-                style={
-                  styles.radioLabel
-                }>{`${addr.street}, ${addr.num} - ${addr.neighborhood}`}</Text>
-            </View>
-          ))}
-        </RadioButton.Group>
-      )}
-
-      <Text style={styles.title}>O que você quer doar?</Text>
-      <FlatList
-        data={materialsList}
-        keyExtractor={item => item.materialId}
-        renderItem={({ item }) => (
-          <List.Item
-            title={`${item.materialName}`}
-            description={`${item.weight} kg`}
-            titleStyle={{ color: colors.text, fontWeight: 'bold' }}
-            descriptionStyle={{ color: colors.textSecondary, fontSize: 14 }}
-            right={() => (
-              <TouchableOpacity
-                onPress={() => handleRemoveMaterial(item.materialId)}
-                style={{ justifyContent: 'center' }}>
-                <List.Icon icon="delete" color={colors.error} />
-              </TouchableOpacity>
-            )}
-          />
-        )}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>Nenhum material adicionado.</Text>
-        }
-      />
-
-      <Button
-        icon="plus"
-        mode="contained"
-        onPress={() => setModalVisible(true)}
-        buttonColor={colors.primary}
-        textColor={colors.textLight}>
-        Adicionar Material
-      </Button>
-
-      <Button
-        style={styles.navButton}
-        mode="contained"
-        onPress={handleNextStep}
-        disabled={!selectedAddressId || materialsList.length === 0}
-        buttonColor={colors.primaryDark}
-        textColor={colors.textLight}>
-        Avançar
-      </Button>
-
-      {/* MODAL */}
-      <Modal visible={isModalVisible} animationType="fade" transparent={true}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.title}>Adicionar Material</Text>
-            {allMaterials.map(mat => (
-              <TouchableOpacity
-                key={mat.id}
-                onPress={() => setSelectedMaterial(mat)}
-                style={
-                  selectedMaterial?.id === mat.id
-                    ? styles.selectedMaterial
-                    : styles.materialItem
-                }>
-                <Text
-                  style={{
-                    color:
-                      selectedMaterial?.id === mat.id
-                        ? colors.primaryDark
-                        : colors.text,
-                  }}>
-                  {mat.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-            <TextInput
-              style={styles.input}
-              placeholder="Peso estimado (kg)"
-              keyboardType="numeric"
-              value={weight}
-              onChangeText={setWeight}
-            />
-            <Button onPress={handleSaveMaterial} textColor={colors.primary}>
-              Salvar
-            </Button>
-            <Button
-              onPress={() => setModalVisible(false)}
-              textColor={colors.textSecondary}>
-              Cancelar
-            </Button>
-          </View>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}>
+          <ArrowLeft color="#4b5563" size={24} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerSubtitle}>Etapa 1 de 2</Text>
+          <Text style={styles.headerTitle}>O que e Onde</Text>
         </View>
-      </Modal>
+        <View style={styles.stepIndicator}>
+          <View style={[styles.stepDot, { backgroundColor: colors.primary }]} />
+          <View style={[styles.stepDot, { backgroundColor: '#e5e7eb' }]} />
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {loading ? (
+          <ActivityIndicator
+            color={colors.primary}
+            size="large"
+            style={{ marginTop: 50 }}
+          />
+        ) : (
+          <>
+            {/* Endereços */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <MapPin color={colors.primary} size={20} />
+                <Text style={styles.sectionTitle}>Endereço de Coleta</Text>
+              </View>
+
+              {addresses.length === 0 ? (
+                <View style={styles.emptyAddressCard}>
+                  <Text style={styles.emptyAddressText}>
+                    Você ainda não possui um endereço cadastrado.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.addAddressBtn}
+                    onPress={() => navigation.navigate('RegisterAddress')}>
+                    <PlusCircle color="#fff" size={20} />
+                    <Text style={styles.addAddressBtnText}>
+                      Cadastrar Endereço
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.addressList}>
+                  {addresses.map(addr => {
+                    const isSelected = selectedAddress === addr.id;
+                    return (
+                      <TouchableOpacity
+                        key={addr.id}
+                        onPress={() => setSelectedAddress(addr.id)}
+                        style={[
+                          styles.addressCard,
+                          isSelected && styles.addressCardSelected,
+                        ]}>
+                        <View
+                          style={[
+                            styles.addressIcon,
+                            isSelected && styles.addressIconSelected,
+                          ]}>
+                          {isSelected ? (
+                            <Check color="#fff" size={20} />
+                          ) : (
+                            <MapPin color="#9ca3af" size={20} />
+                          )}
+                        </View>
+                        <View style={styles.addressInfo}>
+                          <Text style={styles.addressStreet} numberOfLines={1}>
+                            {addr.street}, {addr.number}
+                          </Text>
+                          <Text style={styles.addressDetail} numberOfLines={1}>
+                            {addr.neighborhood} - {addr.city}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+
+            {/* Materiais */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Recycle color={colors.primary} size={20} />
+                <Text style={styles.sectionTitle}>Materiais</Text>
+                {selectedMaterials.length > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {selectedMaterials.length} sel.
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.grid}>
+                {materials.map(mat => (
+                  <View key={mat.id} style={styles.gridItem}>
+                    <TouchableOpacity
+                      onPress={() => toggleMaterial(mat.id)}
+                      style={[
+                        styles.matCard,
+                        mat.selected && styles.matCardSelected,
+                      ]}>
+                      {mat.selected && (
+                        <View style={styles.matCheck}>
+                          <Check color="#fff" size={12} />
+                        </View>
+                      )}
+
+                      {/* Lógica da Imagem do Banco */}
+                      {mat.icon_url ? (
+                        <Image
+                          source={{ uri: mat.icon_url }}
+                          style={styles.matImage}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <Recycle
+                          color={mat.selected ? colors.primary : '#9ca3af'}
+                          size={32}
+                        />
+                      )}
+
+                      <Text
+                        style={[
+                          styles.matName,
+                          mat.selected && { color: '#111827' },
+                        ]}
+                        numberOfLines={1}>
+                        {mat.name}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {mat.selected && (
+                      <View style={styles.stepper}>
+                        <TouchableOpacity
+                          onPress={() => updateKg(mat.id, -1)}
+                          style={styles.stepBtn}>
+                          <Minus color="#6b7280" size={16} />
+                        </TouchableOpacity>
+                        <Text style={styles.stepValue}>
+                          {mat.kg}
+                          <Text style={styles.stepKg}>kg</Text>
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => updateKg(mat.id, 1)}
+                          style={styles.stepBtnPlus}>
+                          <Plus color={colors.primary} size={16} />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          </>
+        )}
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[styles.primaryButton, !canProceed && styles.buttonDisabled]}
+          disabled={!canProceed}
+          onPress={handleNext}>
+          <Text style={styles.primaryButtonText}>Avançar</Text>
+          <ChevronRight color="#fff" size={20} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
+  container: { flex: 1, backgroundColor: '#ffffff' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
     paddingTop: 50,
-    backgroundColor: colors.background,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderColor: '#f3f4f6',
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 10,
-    color: colors.primaryDark,
-  },
-  radioItem: { flexDirection: 'row', alignItems: 'center' },
-  radioLabel: { flex: 1, color: colors.text },
-  navButton: { marginTop: 20, marginBottom: 20 },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 10,
-    color: colors.textSecondary,
-  },
-  modalContainer: {
-    flex: 1,
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    marginRight: 15,
   },
-  modalContent: {
-    backgroundColor: colors.background,
+  headerSubtitle: { fontSize: 12, color: '#6b7280', fontWeight: '500' },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
+  stepIndicator: { flexDirection: 'row', gap: 6 },
+  stepDot: { width: 32, height: 6, borderRadius: 3 },
+  scrollContent: { padding: 20, paddingBottom: 100 },
+  section: { marginBottom: 30 },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 15,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#111827' },
+  badge: {
+    marginLeft: 'auto',
+    backgroundColor: `${colors.primary}20`,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgeText: { fontSize: 12, color: colors.primary, fontWeight: 'bold' },
+  emptyAddressCard: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 16,
     padding: 20,
-    borderRadius: 10,
-    width: '80%',
-  },
-  materialItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-  },
-  selectedMaterial: {
-    padding: 10,
-    backgroundColor: '#e8f5e9',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.primary,
-  },
-  input: {
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 10,
-    borderRadius: 5,
-    marginTop: 20,
-    marginBottom: 10,
+    borderColor: '#e5e7eb',
+    borderStyle: 'dashed',
   },
+  emptyAddressText: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  addAddressBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  addAddressBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  addressList: { gap: 12 },
+  addressCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    padding: 15,
+    gap: 15,
+  },
+  addressCardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}05`,
+  },
+  addressIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addressIconSelected: { backgroundColor: colors.primary },
+  addressInfo: { flex: 1 },
+  addressStreet: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  addressDetail: { fontSize: 12, color: '#6b7280' },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  gridItem: { width: '31%', gap: 8 },
+  matCard: {
+    aspectRatio: 1,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 8,
+  },
+  matCardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}05`,
+  },
+  matCheck: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    padding: 2,
+    zIndex: 1,
+  },
+  matImage: { width: 40, height: 40, marginBottom: 8 },
+  matName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9ca3af',
+    textAlign: 'center',
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 4,
+  },
+  stepBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepBtnPlus: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: `${colors.primary}20`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepValue: { fontSize: 14, fontWeight: 'bold', color: '#111827' },
+  stepKg: { fontSize: 10, color: '#6b7280', fontWeight: 'normal' },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    padding: 20,
+    borderTopWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    height: 56,
+    borderRadius: 16,
+  },
+  buttonDisabled: { opacity: 0.5 },
+  primaryButtonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
 });
