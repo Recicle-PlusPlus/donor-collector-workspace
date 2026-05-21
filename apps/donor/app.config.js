@@ -42,7 +42,7 @@ export default {
         projectId: '6ec1c245-ebf0-492f-86cd-722b26cdcc38',
       },
     },
-    owner: 'fe.souza',
+    owner: 'reciclepp',
     plugins: [
       [
         'expo-notifications',

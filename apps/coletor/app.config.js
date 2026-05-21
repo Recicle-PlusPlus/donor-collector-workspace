@@ -41,6 +41,6 @@ export default {
         projectId: '62936b4c-b461-4016-8454-8fb42283e965',
       },
     },
-    owner: 'fe.souza',
+    owner: 'reciclepp',
   },
 };
