@@ -3,6 +3,7 @@ import React, {
   useState,
   useEffect,
   useContext,
+  useCallback,
   ReactNode,
 } from 'react';
 import { Session, User } from '@supabase/supabase-js';
@@ -20,6 +21,7 @@ interface AuthContextProps {
   session: Session | null;
   profile: UserProfile | null;
   isLoading: boolean;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps>({
@@ -27,6 +29,7 @@ const AuthContext = createContext<AuthContextProps>({
   session: null,
   profile: null,
   isLoading: true,
+  signInWithPassword: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -42,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user?.id, expoPushToken]);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('users')
@@ -56,46 +59,111 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           error.message,
           error.details,
         );
-        setProfile(null);
-        return;
+        return null;
       }
 
       if (!data) {
         console.warn(
           `[AuthContext - WARN] Usuário autenticado, mas nenhum perfil encontrado na tabela 'users' para o ID: ${userId}`,
         );
-        setProfile(null);
-        return;
+        return null;
       }
 
-      setProfile({
+      return {
         name: data.name,
         photo_url: data.photo_url,
         account_status: data.account_status,
-      });
+      };
     } catch (err: any) {
       console.error(
         '[AuthContext - FATAL] Exceção não tratada ao buscar perfil:',
         err.message || err,
       );
-      setProfile(null);
+      return null;
     }
-  };
+  }, []);
+
+  const syncSessionState = useCallback(
+    (nextSession: Session | null, source: string, nextUser?: User | null) => {
+      console.log(
+        `[AuthContext] Aplicando sessão via ${source}. Autenticado: ${Boolean(
+          nextUser ?? nextSession?.user,
+        )}`,
+      );
+
+      setSession(nextSession);
+      setProfile(null);
+      setUser(nextUser ?? nextSession?.user ?? null);
+      setIsLoading(false);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    if (!user?.id) {
+      setProfile(null);
+      return;
+    }
+
+    console.log(`[AuthContext] Buscando perfil para ${user.id}.`);
+
+    const carregarPerfil = async () => {
+      const nextProfile = await fetchProfile(user.id);
+
+      if (!active) {
+        return;
+      }
+
+      setProfile(nextProfile);
+    };
+
+    void carregarPerfil();
+
+    return () => {
+      active = false;
+    };
+  }, [fetchProfile, user?.id]);
+
+  const signInWithPassword = useCallback(
+    async (email: string, password: string) => {
+      console.log('[AuthContext][Login] Iniciando signInWithPassword.');
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.log(
+          '[AuthContext][Login] Falha ao autenticar no Supabase:',
+          error.message,
+        );
+        throw error;
+      }
+
+      console.log(
+        `[AuthContext][Login] Login bem-sucedido. Sessao imediata: ${Boolean(
+          data.session,
+        )}, usuario: ${data.user?.id ?? 'sem-id'}`,
+      );
+
+      syncSessionState(
+        data.session ?? null,
+        'login',
+        data.user ?? data.session?.user ?? null,
+      );
+    },
+    [syncSessionState],
+  );
 
   useEffect(() => {
     let montado = true;
 
-    const fallbackTimeout = setTimeout(() => {
-      if (montado) {
-        console.warn(
-          '[AuthContext - TIMEOUT] A inicialização demorou muito. Forçando destravamento da tela para evitar congelamento.',
-        );
-        setIsLoading(false);
-      }
-    }, 15000);
-
     const carregarSessaoInicial = async () => {
       try {
+        console.log('[AuthContext] Carregando sessao inicial.');
         const {
           data: { session },
           error,
@@ -109,12 +177,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         if (montado) {
-          setSession(session);
-          setUser(session?.user ?? null);
-
-          if (session?.user) {
-            await fetchProfile(session.user.id);
-          }
+          syncSessionState(session, 'getSession', session?.user ?? null);
         }
       } catch (err: any) {
         console.error(
@@ -123,7 +186,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         );
       } finally {
         if (montado) {
-          clearTimeout(fallbackTimeout);
           setIsLoading(false);
         }
       }
@@ -133,34 +195,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log(
+          `[AuthContext] onAuthStateChange disparado: ${event}. Usuario: ${session?.user?.id ?? 'null'}`,
+        );
+
         if (event === 'TOKEN_REFRESHED')
           console.log('[AuthContext - INFO] Token JWT renovado com sucesso.');
 
         if (event === 'INITIAL_SESSION') return;
 
-        if (montado) {
-          setSession(session);
-          setUser(session?.user ?? null);
-
-          if (session?.user) {
-            await fetchProfile(session.user.id);
-          } else {
-            setProfile(null);
-          }
-          setIsLoading(false);
-        }
+        if (montado) syncSessionState(session, event, session?.user ?? null);
       },
     );
 
     return () => {
       montado = false;
-      clearTimeout(fallbackTimeout);
       authListener.subscription.unsubscribe();
     };
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, isLoading }}>
+    <AuthContext.Provider
+      value={{ user, session, profile, isLoading, signInWithPassword }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,15 +12,18 @@ import {
   Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { supabase } from '@workspace/db';
 import { colors } from './../theme/colors';
 import { ErrorModal } from '../components/ErrorModal';
 
 interface LoginScreenProps {
   onNavigateToRegister: () => void;
+  onLogin: (email: string, password: string) => Promise<void>;
 }
 
-export const LoginScreen = ({ onNavigateToRegister }: LoginScreenProps) => {
+export const LoginScreen = ({
+  onNavigateToRegister,
+  onLogin,
+}: LoginScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -30,8 +33,17 @@ export const LoginScreen = ({ onNavigateToRegister }: LoginScreenProps) => {
     {},
   );
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const loginAttemptRef = useRef(0);
+  const loginLockRef = useRef(false);
 
   const handleLogin = async () => {
+    if (loginLockRef.current) {
+      console.log(
+        '[Login] Tentativa ignorada porque já existe um login em andamento.',
+      );
+      return;
+    }
+
     // Validação local
     const newErrors: typeof errors = {};
     if (!email) newErrors.email = 'Informe seu email';
@@ -42,18 +54,21 @@ export const LoginScreen = ({ onNavigateToRegister }: LoginScreenProps) => {
 
     setLoading(true);
     setGlobalError(null);
+    loginLockRef.current = true;
+    loginAttemptRef.current += 1;
+
+    const attemptId = loginAttemptRef.current;
+    console.log(`[Login] Tentativa ${attemptId} iniciada.`);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) throw error;
-      // O AuthContext vai detectar a mudança e redirecionar automaticamente
+      await onLogin(email, password);
+      console.log(`[Login] Tentativa ${attemptId} concluída com sucesso.`);
     } catch (e: any) {
+      console.log(`[Login] Tentativa ${attemptId} falhou:`, e.message || e);
       setGlobalError(e.message || 'Credenciais inválidas. Tente novamente.');
     } finally {
       setLoading(false);
+      loginLockRef.current = false;
     }
   };
 
