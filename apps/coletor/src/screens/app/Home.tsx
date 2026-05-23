@@ -80,8 +80,17 @@ export function Home() {
 
   if (loading) return <Loading />;
 
-  const firstName = profile?.name ? profile.name.split(' ')[0] : 'Coletor';
+  const authName = profile?.name ?? user?.user_metadata?.name;
+  const authPhotoUrl = profile?.photo_url ?? user?.user_metadata?.photo_url;
+  const firstName =
+    typeof authName === 'string' && authName.trim().length > 0
+      ? authName.split(' ')[0]
+      : 'Coletor';
   const firstLetter = firstName.charAt(0).toUpperCase();
+  const avatarSource =
+    typeof authPhotoUrl === 'string' && authPhotoUrl.length > 0
+      ? { uri: authPhotoUrl }
+      : null;
 
   return (
     <View style={styles.container}>
@@ -94,11 +103,8 @@ export function Home() {
               style={styles.avatarBtn}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('Profile' as any)}>
-              {profile?.photo_url ? (
-                <Image
-                  source={{ uri: profile.photo_url }}
-                  style={styles.avatarImage}
-                />
+              {avatarSource ? (
+                <Image source={avatarSource} style={styles.avatarImage} />
               ) : (
                 <Text style={styles.avatarText}>{firstLetter}</Text>
               )}

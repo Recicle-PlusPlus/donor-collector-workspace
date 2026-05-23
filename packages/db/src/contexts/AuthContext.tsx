@@ -37,6 +37,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [profileRefreshKey, setProfileRefreshKey] = useState(0);
 
   const { expoPushToken, saveTokenToDatabase } = usePushNotifications();
   useEffect(() => {
@@ -85,15 +86,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const syncSessionState = useCallback(
     (nextSession: Session | null, source: string, nextUser?: User | null) => {
+      const resolvedUser = nextUser ?? nextSession?.user ?? null;
+
       console.log(
         `[AuthContext] Aplicando sessão via ${source}. Autenticado: ${Boolean(
-          nextUser ?? nextSession?.user,
+          resolvedUser,
         )}`,
       );
 
       setSession(nextSession);
-      setProfile(null);
-      setUser(nextUser ?? nextSession?.user ?? null);
+      setUser(resolvedUser);
+
+      if (!resolvedUser) {
+        setProfile(null);
+      } else if (source !== 'TOKEN_REFRESHED') {
+        setProfileRefreshKey(current => current + 1);
+      }
+
       setIsLoading(false);
     },
     [],
@@ -124,7 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       active = false;
     };
-  }, [fetchProfile, user?.id]);
+  }, [fetchProfile, user?.id, profileRefreshKey]);
 
   const signInWithPassword = useCallback(
     async (email: string, password: string) => {
