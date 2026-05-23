@@ -1,20 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
+import Constants from 'expo-constants';
 import { supabase } from '../client';
 
-const isExpoGo =
-  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+type PushPermissionStatus = 'undetermined' | 'denied' | 'granted';
 
-export function usePushNotifications() {
+interface UsePushNotificationsOptions {
+  autoRequest?: boolean;
+}
+
+export function usePushNotifications(options: UsePushNotificationsOptions = {}) {
+  const { autoRequest = true } = options;
   const [expoPushToken, setExpoPushToken] = useState<string | undefined>();
+  const [permissionStatus, setPermissionStatus] =
+    useState<PushPermissionStatus>('undetermined');
+  const [permissionChecked, setPermissionChecked] = useState(false);
+  const [permissionRequesting, setPermissionRequesting] = useState(false);
 
   useEffect(() => {
-    if (isExpoGo) {
-      return;
-    }
-
     const Notifications =
       require('expo-notifications') as typeof import('expo-notifications');
 
@@ -28,10 +32,70 @@ export function usePushNotifications() {
       }),
     });
 
-    registerForPushNotificationsAsync(Notifications).then(token =>
-      setExpoPushToken(token),
-    );
-  }, []);
+    const initialize = async () => {
+      if (autoRequest) {
+        const token = await registerForPushNotificationsAsync(Notifications);
+        setExpoPushToken(token);
+      } else {
+        await refreshPermissionStatus(Notifications, 'manual');
+      }
+    };
+
+    void initialize();
+  }, [autoRequest]);
+
+  const refreshPermissionStatus = async (
+    Notifications: typeof import('expo-notifications'),
+    context: 'launch' | 'manual',
+  ) => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      setPermissionStatus(status as PushPermissionStatus);
+      setPermissionChecked(true);
+      console.log(
+        `[usePushNotifications] Notification permission status (${context}): ${status}.`,
+      );
+      return status as PushPermissionStatus;
+    } catch (error) {
+      console.error(
+        '[usePushNotifications] Failed to read notification permission status:',
+        error,
+      );
+      setPermissionChecked(true);
+      return 'undetermined' as PushPermissionStatus;
+    }
+  };
+
+  const requestPermission = async () => {
+    const Notifications =
+      require('expo-notifications') as typeof import('expo-notifications');
+
+    setPermissionRequesting(true);
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      setPermissionStatus(status as PushPermissionStatus);
+      setPermissionChecked(true);
+      console.log(
+        `[usePushNotifications] Notification permission request result: ${status}.`,
+      );
+
+      if (status !== 'granted') {
+        console.log(
+          '[usePushNotifications] Notification permission denied by user.',
+        );
+      }
+
+      return status as PushPermissionStatus;
+    } catch (error) {
+      console.error(
+        '[usePushNotifications] Failed to request notification permission:',
+        error,
+      );
+      return 'undetermined' as PushPermissionStatus;
+    } finally {
+      setPermissionRequesting(false);
+    }
+  };
 
   async function registerForPushNotificationsAsync(
     Notifications: typeof import('expo-notifications'),
@@ -39,26 +103,32 @@ export function usePushNotifications() {
     let token;
 
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-      });
+      try {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+        });
+      } catch (error) {
+        console.error(
+          '[usePushNotifications] Failed to set Android notification channel:',
+          error,
+        );
+      }
     }
 
     if (Device.isDevice) {
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
+      let finalStatus = await refreshPermissionStatus(Notifications, 'launch');
 
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
+      if (finalStatus !== 'granted') {
+        finalStatus = await requestPermission();
       }
 
       if (finalStatus !== 'granted') {
-        console.log('Falha ao obter permissão para push notification!');
+        console.log(
+          '[usePushNotifications] Push permission not granted. Skipping token registration.',
+        );
         return;
       }
 
@@ -68,7 +138,7 @@ export function usePushNotifications() {
 
       if (!projectId) {
         console.warn(
-          'Project ID não encontrado. Verifique se você rodou eas init.',
+          '[usePushNotifications] Project ID not found',
         );
       }
 
@@ -79,11 +149,11 @@ export function usePushNotifications() {
           })
         ).data;
       } catch (e) {
-        console.error('Erro ao gerar token:', e);
+        console.error('[usePushNotifications] Error generating token:', e);
       }
     } else {
       console.log(
-        'Push Notifications só funcionam em dispositivos físicos, não em simuladores.',
+        '[usePushNotifications] Push Notifications only works on physical devices.',
       );
     }
 
@@ -98,8 +168,15 @@ export function usePushNotifications() {
       .update({ expo_push_token: token })
       .eq('id', userId);
 
-    if (error) console.error('Erro ao salvar push token no Supabase:', error);
+    if (error) console.error('[usePushNotifications] Error saving push token to Supabase:', error);
   };
 
-  return { expoPushToken, saveTokenToDatabase };
+  return {
+    expoPushToken,
+    saveTokenToDatabase,
+    permissionStatus,
+    permissionChecked,
+    permissionRequesting,
+    requestPermission,
+  };
 }

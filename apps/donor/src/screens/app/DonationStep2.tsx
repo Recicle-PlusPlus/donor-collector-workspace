@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Notifications from 'expo-notifications';
 import {
   ArrowLeft,
   MapPin,
@@ -21,7 +22,7 @@ import {
   Clock,
   Plus,
 } from 'lucide-react-native';
-import { colors } from '@workspace/ui';
+import { colors, NotificationPermissionDialog } from '@workspace/ui';
 import { supabase } from '@workspace/db';
 import { RootStackParamList } from '../../navigation';
 
@@ -49,6 +50,9 @@ export function DonationStep2() {
   const [notes, setNotes] = useState('');
   const [schedules, setSchedules] = useState<ScheduleInterval[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
+  const [pendingSuccessNavigation, setPendingSuccessNavigation] =
+    useState(false);
 
   const [isAdding, setIsAdding] = useState(false);
   const [newDay, setNewDay] = useState(1);
@@ -121,10 +125,28 @@ export function DonationStep2() {
       );
       console.log(error);
     } else {
-      navigation.navigate('Main', {
-        refresh: true,
-        snackbarMessage: 'Coleta agendada com sucesso!',
-      });
+      const navigateSuccess = () => {
+        navigation.navigate('Main', {
+          refresh: true,
+          snackbarMessage: 'Coleta agendada com sucesso!',
+        });
+      };
+
+      try {
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status === 'denied') {
+          setPendingSuccessNavigation(true);
+          setShowPermissionDialog(true);
+          return;
+        }
+      } catch (permissionError) {
+        console.error(
+          '[DonationStep2] Failed to read notification permission status:',
+          permissionError,
+        );
+      }
+
+      navigateSuccess();
     }
   };
 
@@ -150,6 +172,20 @@ export function DonationStep2() {
 
   return (
     <View style={styles.container}>
+      <NotificationPermissionDialog
+        forceOpen={showPermissionDialog}
+        onForceClose={() => {
+          setShowPermissionDialog(false);
+          if (pendingSuccessNavigation) {
+            setPendingSuccessNavigation(false);
+            navigation.navigate('Main', {
+              refresh: true,
+              snackbarMessage: 'Coleta agendada com sucesso!',
+            });
+          }
+        }}
+      />
+
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}

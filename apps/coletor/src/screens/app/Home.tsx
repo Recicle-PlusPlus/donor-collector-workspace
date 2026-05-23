@@ -13,7 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { supabase } from '@workspace/db';
-import { colors, Loading } from '@workspace/ui';
+import { colors, Loading, NotificationPermissionDialog } from '@workspace/ui';
 import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 
 import { DonationCard } from '@workspace/ui/src/components/DonationCard';
@@ -95,6 +95,8 @@ export function Home() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+
+      <NotificationPermissionDialog />
 
       <View style={styles.headerContainer}>
         <View style={styles.headerContent}>

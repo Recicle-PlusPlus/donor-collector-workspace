@@ -13,7 +13,11 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { colors, ErrorModal } from '@workspace/ui';
+import {
+  colors,
+  ErrorModal,
+  NotificationPermissionDialog,
+} from '@workspace/ui';
 import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 import { RootStackParamList } from '../../navigation';
 
@@ -68,6 +72,8 @@ export function Home() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+
+      <NotificationPermissionDialog />
 
       {!!errorMsg && (
         <ErrorModal

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   FlatList,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -16,7 +17,11 @@ import {
   BellRing,
   Inbox,
 } from 'lucide-react-native';
-import { useNotifications, NotificationItem } from '@workspace/db';
+import {
+  useNotifications,
+  NotificationItem,
+  usePushNotifications,
+} from '@workspace/db';
 
 export interface NotificationsScreenProps {
   onBackPress: () => void;
@@ -59,14 +64,36 @@ export function NotificationsScreen({
   onBackPress,
   onNotificationClick,
 }: NotificationsScreenProps) {
-  const [pushEnabled, setPushEnabled] = useState(false);
   const { notifications, loading, markAsRead } = useNotifications();
+  const {
+    permissionStatus,
+    permissionChecked,
+    permissionRequesting,
+    requestPermission,
+  } = usePushNotifications({ autoRequest: false });
 
   const handleNotificationPress = (item: NotificationItem) => {
     if (!item.is_read) {
       markAsRead(item.id);
     }
     onNotificationClick(item);
+  };
+
+  const handleEnableNotifications = async () => {
+    try {
+      const status = await requestPermission();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Notificações desativadas',
+          'Para receber alertas em tempo real, permita as notificações nas configurações do dispositivo.',
+        );
+      }
+    } catch (error) {
+      Alert.alert(
+        'Erro ao ativar notificações',
+        'Não foi possível atualizar a permissão agora. Tente novamente.',
+      );
+    }
   };
 
   const renderEmptyState = () => {
@@ -127,7 +154,7 @@ export function NotificationsScreen({
         </View>
 
         <View style={styles.content}>
-          {!pushEnabled && (
+          {permissionChecked && permissionStatus !== 'granted' && (
             <View style={styles.banner}>
               <View style={styles.bannerIconWrapper}>
                 <BellOff size={20} color="#b45309" />
@@ -140,7 +167,8 @@ export function NotificationsScreen({
               </View>
               <TouchableOpacity
                 style={styles.bannerButton}
-                onPress={() => setPushEnabled(true)}>
+                onPress={handleEnableNotifications}
+                disabled={permissionRequesting}>
                 <BellRing size={16} color="#ffffff" />
                 <Text style={styles.bannerButtonText}>Ativar</Text>
               </TouchableOpacity>
