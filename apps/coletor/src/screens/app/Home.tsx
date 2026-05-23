@@ -102,7 +102,7 @@ export function Home() {
             <TouchableOpacity
               style={styles.avatarBtn}
               activeOpacity={0.8}
-              onPress={() => navigation.navigate('Profile' as any)}>
+              onPress={() => navigation.navigate('ProfileTab' as any)}>
               {avatarSource ? (
                 <Image source={avatarSource} style={styles.avatarImage} />
               ) : (
