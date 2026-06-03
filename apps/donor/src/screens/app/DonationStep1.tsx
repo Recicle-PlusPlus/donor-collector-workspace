@@ -19,6 +19,7 @@ import {
   PlusCircle,
   Recycle,
 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '@workspace/db';
 import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 import { colors } from '@workspace/ui';
@@ -32,6 +33,7 @@ interface Material {
 }
 
 export function DonationStep1() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { user } = useAuth();
 
@@ -281,7 +283,11 @@ export function DonationStep1() {
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View
+        style={[
+          styles.footer,
+          { paddingBottom: Math.max(insets.bottom, 24) + 10 },
+        ]}>
         <TouchableOpacity
           style={[styles.primaryButton, !canProceed && styles.buttonDisabled]}
           disabled={!canProceed}

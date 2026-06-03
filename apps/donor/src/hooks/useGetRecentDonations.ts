@@ -21,7 +21,9 @@ export function useGetRecentDonations(donorId?: string) {
         `
         id,
         status,
+        donor_reviewed,
         created_at,
+        completed_at,
         addresses ( street, num, neighborhood ),
         collector:users!collector_id ( name ),
         donation_items ( materials ( name ) ),
@@ -29,6 +31,7 @@ export function useGetRecentDonations(donorId?: string) {
       `,
       )
       .eq('donor_id', donorId)
+      .in('status', ['pending', 'accepted'])
       .order('created_at', { ascending: false })
       .limit(5);
 

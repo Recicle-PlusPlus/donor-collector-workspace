@@ -7,6 +7,7 @@ import { Home } from '../screens/app/Home';
 import { Profile } from '../screens/app/Profile';
 import { MarketplaceScreen } from '@workspace/ui/src/marketplace/MarketplaceScreen';
 import { useAuth } from '@workspace/db/src/contexts/AuthContext';
+import { CompletedDonationsshare } from '../screens/app/CompletedDonations';
 
 const Tab = createBottomTabNavigator();
 
@@ -35,6 +36,16 @@ export function MainTabs() {
               color={color}
               size={size}
             />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="CompletedDonationsTab"
+        component={CompletedDonationsshare}
+        options={{
+          tabBarLabel: 'Histórico',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="history" color={color} size={size} />
           ),
         }}
       />

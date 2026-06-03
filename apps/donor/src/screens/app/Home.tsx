@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,9 @@ import {
   Alert,
   Image,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -34,6 +35,7 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<
 
 export function Home() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const [refreshing, setRefreshing] = useState(false);
 
   const { user, profile } = useAuth();
   const donorId = user?.id;
@@ -49,8 +51,20 @@ export function Home() {
     donations,
     loading: donationsLoading,
     error: donationsError,
+    refetch: refetchDonations,
   } = useGetRecentDonations(donorId);
 
+  useFocusEffect(
+    useCallback(() => {
+      refetchDonations();
+    }, [refetchDonations]),
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (refetchDonations) await refetchDonations();
+    setRefreshing(false);
+  };
   useEffect(() => {
     if (statsError || donationsError) {
       setErrorMsg('Ocorreu um problema ao carregar os seus dados.');
@@ -119,7 +133,14 @@ export function Home() {
 
       <ScrollView
         contentContainerStyle={styles.mainContent}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+          />
+        }>
         {/* SEÇÃO DE IMPACTO */}
         <ImpactSection
           statistics={statistics}
