@@ -9,6 +9,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { colors } from '@workspace/ui';
 
 interface RadiusBottomSheetProps {
@@ -19,7 +20,6 @@ interface RadiusBottomSheetProps {
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const DISTANCES = [2, 5, 7.5, 10, 20, 50];
 
 export function RadiusBottomSheet({
   visible,
@@ -45,7 +45,7 @@ export function RadiusBottomSheet({
         useNativeDriver: true,
       }).start();
     }
-  }, [visible]);
+  }, [visible, currentRadius]);
 
   const handleApply = () => {
     onApply(tempRadius);
@@ -72,27 +72,29 @@ export function RadiusBottomSheet({
 
           <Text style={styles.title}>Distância Máxima</Text>
           <Text style={styles.subtitle}>
-            Busque coletas dentro de um raio específico.
+            Arraste para ajustar o raio de busca das coletas.
           </Text>
 
-          <View style={styles.optionsContainer}>
-            {DISTANCES.map(d => (
-              <TouchableOpacity
-                key={d}
-                style={[
-                  styles.optionBtn,
-                  tempRadius === d && styles.optionBtnActive,
-                ]}
-                onPress={() => setTempRadius(d)}>
-                <Text
-                  style={[
-                    styles.optionText,
-                    tempRadius === d && styles.optionTextActive,
-                  ]}>
-                  {d} km
-                </Text>
-              </TouchableOpacity>
-            ))}
+          {/* SESSÃO DO SLIDER */}
+          <View style={styles.sliderContainer}>
+            <Text style={styles.distanceValue}>{tempRadius} km</Text>
+
+            <Slider
+              style={styles.slider}
+              minimumValue={1}
+              maximumValue={50}
+              step={1}
+              value={tempRadius}
+              onValueChange={value => setTempRadius(value)}
+              minimumTrackTintColor={colors.primary}
+              maximumTrackTintColor="#E2E8F0"
+              thumbTintColor={colors.primary}
+            />
+
+            <View style={styles.sliderLabels}>
+              <Text style={styles.sliderLabelText}>1 km</Text>
+              <Text style={styles.sliderLabelText}>50 km</Text>
+            </View>
           </View>
 
           <TouchableOpacity style={styles.applyBtn} onPress={handleApply}>
@@ -134,26 +136,35 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 20, fontWeight: 'bold', color: colors.primaryDark },
   subtitle: { fontSize: 14, color: colors.textSecondary, marginBottom: 20 },
-  optionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+
+  sliderContainer: {
+    alignItems: 'center',
     marginBottom: 30,
+    paddingHorizontal: 10,
   },
-  optionBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
+  distanceValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: colors.primary,
+    marginBottom: 10,
   },
-  optionBtnActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+  slider: {
+    width: '100%',
+    height: 40,
   },
-  optionText: { fontSize: 16, color: colors.textSecondary, fontWeight: '500' },
-  optionTextActive: { color: '#FFF', fontWeight: 'bold' },
+  sliderLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 15,
+    marginTop: -5,
+  },
+  sliderLabelText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+
   applyBtn: {
     backgroundColor: colors.primary,
     paddingVertical: 16,
