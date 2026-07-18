@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
+  Linking,
 } from 'react-native';
 import MapView, { Region } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -159,8 +161,29 @@ export function RegisterAddressScreen() {
   const handleAdvanceToMap = async () => {
     setLoading(true);
     try {
-      let regionToSet = { ...mapRegion };
+      let { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        const { status: newStatus } =
+          await Location.requestForegroundPermissionsAsync();
+        status = newStatus;
+      }
 
+      if (status !== 'granted') {
+        Alert.alert(
+          'Localização Obrigatória',
+          'Precisamos de acesso à sua localização para definir as coordenadas exatas do seu endereço. Por favor, ative nas configurações do aparelho.',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Abrir Configurações',
+              onPress: () => Linking.openSettings(),
+            },
+          ],
+        );
+        return;
+      }
+
+      let regionToSet = { ...mapRegion };
       const fullAddress = `${form.street}, ${form.number}, ${form.city}, ${form.state}`;
       const geocode = await Location.geocodeAsync(fullAddress);
 
@@ -172,16 +195,13 @@ export function RegisterAddressScreen() {
           longitudeDelta: 0.005,
         };
       } else {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const location = await Location.getCurrentPositionAsync({});
-          regionToSet = {
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          };
-        }
+        const location = await Location.getCurrentPositionAsync({});
+        regionToSet = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        };
       }
 
       setMapRegion(regionToSet);
@@ -191,8 +211,11 @@ export function RegisterAddressScreen() {
       });
       setStep(2);
     } catch (error) {
-      console.log('Erro ao geolocalizar:', error);
-      setStep(2);
+      console.error('Erro ao geolocalizar:', error);
+      Alert.alert(
+        'Erro de Localização',
+        'Não foi possível obter sua localização. Verifique se o GPS está ligado.',
+      );
     } finally {
       setLoading(false);
     }
@@ -219,7 +242,7 @@ export function RegisterAddressScreen() {
       // Remove tudo que não for número do CEP antes de salvar
       const cleanCep = form.cep.replace(/\D/g, '');
 
-      const { error } = await supabase.from('addresses').insert({
+      const addressPayload = {
         user_id: user.id,
         cep: cleanCep,
         street: form.street,
@@ -230,16 +253,22 @@ export function RegisterAddressScreen() {
         state: form.state,
         lat: pinCoordinate.latitude,
         lng: pinCoordinate.longitude,
-      });
+      };
+
+      console.log('[RegisterAddress] Salvando novo endereço:', addressPayload);
+
+      const { error } = await supabase.from('addresses').insert(addressPayload);
 
       if (error) throw error;
+
+      console.log('[RegisterAddress] Endereço salvo com sucesso!');
 
       setConfirmed(true);
       setTimeout(() => {
         navigation.goBack();
       }, 1200);
     } catch (error) {
-      console.log('Erro ao salvar endereço:', error);
+      console.error('[RegisterAddress] Erro ao salvar endereço:', error);
     } finally {
       setLoading(false);
     }
