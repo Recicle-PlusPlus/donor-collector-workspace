@@ -8,6 +8,7 @@ import {
   Image,
   TouchableOpacity,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,34 +18,19 @@ import { colors, Loading, NotificationPermissionDialog } from '@workspace/ui';
 import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 
 import { DonationCard } from '@workspace/ui/src/components/DonationCard';
+import { AvailableDonations } from '../../components/AvailableDonations';
 
 export function Home() {
   const navigation = useNavigation<any>();
-
   const { user, profile } = useAuth();
 
-  const [pendingDonations, setPendingDonations] = useState<any[]>([]);
   const [myDonations, setMyDonations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  async function fetchDonations() {
+  async function fetchMyDonations() {
     if (!user) return;
-
-    const { data: pending } = await supabase
-      .from('donations')
-      .select(
-        `
-        id, status, created_at,
-        addresses (*),
-        donation_items ( weight_kg, materials ( name ) ),
-        donation_schedules (*)
-      `,
-      )
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-
-    if (pending) setPendingDonations(pending);
 
     const { data: accepted } = await supabase
       .from('donations')
@@ -65,20 +51,21 @@ export function Home() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchDonations();
+    await fetchMyDonations();
+    setRefreshKey(prev => prev + 1);
     setRefreshing(false);
   };
 
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      await fetchDonations();
+      await fetchMyDonations();
       setLoading(false);
     };
     loadAll();
   }, [user]);
 
-  if (loading) return <Loading />;
+  if (loading && myDonations.length === 0) return <Loading />;
 
   const authName = profile?.name ?? user?.user_metadata?.name;
   const authPhotoUrl = profile?.photo_url ?? user?.user_metadata?.photo_url;
@@ -95,7 +82,6 @@ export function Home() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
-
       <NotificationPermissionDialog />
 
       <View style={styles.headerContainer}>
@@ -111,13 +97,11 @@ export function Home() {
                 <Text style={styles.avatarText}>{firstLetter}</Text>
               )}
             </TouchableOpacity>
-
             <View>
               <Text style={styles.welcomeText}>Bem-vindo(a) de volta,</Text>
               <Text style={styles.nameText}>Olá, {firstName}!</Text>
             </View>
           </View>
-
           <TouchableOpacity
             style={styles.notificationBtn}
             onPress={() => navigation.navigate('Notifications')}>
@@ -140,42 +124,7 @@ export function Home() {
             colors={[colors.primary]}
           />
         }>
-        {/* COLETAS DISPONÍVEIS (PENDENTES) */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Coletas Disponíveis</Text>
-          <Text style={styles.sectionSubtitle}>
-            Novas doações aguardando retirada
-          </Text>
-
-          {pendingDonations.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons
-                name="leaf-off"
-                size={40}
-                color={colors.textSecondary}
-              />
-              <Text style={styles.emptyText}>
-                Nenhuma coleta disponível no momento.
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.verticalList}>
-              {pendingDonations.map(donation => (
-                <DonationCard
-                  key={donation.id}
-                  donation={donation}
-                  onPress={() =>
-                    navigation.navigate('DonationAccept', {
-                      donationId: donation.id,
-                    })
-                  }
-                />
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* MINHAS COLETAS (EM ANDAMENTO) */}
+        {/* COLETAS ACEITAS */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Minhas Coletas</Text>
           <Text style={styles.sectionSubtitle}>Histórico e andamento</Text>
@@ -207,6 +156,8 @@ export function Home() {
             </View>
           )}
         </View>
+
+        <AvailableDonations refreshKey={refreshKey} />
       </ScrollView>
     </View>
   );
@@ -214,10 +165,9 @@ export function Home() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background || '#F5F9F7' },
-
   headerContainer: {
     backgroundColor: colors.primary,
-    paddingTop: 60,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: 30,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
@@ -237,23 +187,23 @@ const styles = StyleSheet.create({
   },
   userInfo: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   avatarBtn: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#FFF',
   },
-  avatarImage: { width: 72, height: 72, borderRadius: 36 },
-  avatarText: { color: '#FFF', fontSize: 32, fontWeight: 'bold' },
+  avatarImage: { width: 56, height: 56, borderRadius: 28 },
+  avatarText: { color: '#FFF', fontSize: 24, fontWeight: 'bold' },
   welcomeText: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
     fontWeight: '500',
   },
-  nameText: { fontSize: 24, fontWeight: 'bold', color: '#FFF', marginTop: 2 },
+  nameText: { fontSize: 20, fontWeight: 'bold', color: '#FFF', marginTop: 2 },
   notificationBtn: {
     width: 44,
     height: 44,
@@ -262,12 +212,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  verticalList: {
-    paddingHorizontal: 20,
-    gap: 15,
-  },
-
   scrollContent: { paddingBottom: 100 },
   section: { marginBottom: 30 },
   sectionTitle: {
@@ -282,7 +226,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 15,
   },
-
+  verticalList: { paddingHorizontal: 20, gap: 15 },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -297,5 +241,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 10,
     textAlign: 'center',
+    paddingHorizontal: 20,
   },
 });
