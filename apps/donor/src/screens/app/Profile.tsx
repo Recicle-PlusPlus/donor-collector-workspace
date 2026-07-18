@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -74,7 +75,8 @@ export function Profile() {
     const { data } = await supabase
       .from('addresses')
       .select('*')
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .eq('is_deleted', false);
     if (data) setAddresses(data);
   }
 
@@ -166,18 +168,50 @@ export function Profile() {
     await supabase.auth.signOut();
   }
 
-  // TO-DO: change to a soft delete
   async function removeAddress(addressId: string) {
     setLoading(true);
     try {
-      await supabase.from('addresses').delete().eq('id', addressId);
+      console.log(
+        `[Profile] Chamando RPC try_delete_address para ID:`,
+        addressId,
+      );
+
+      const { error } = await supabase.rpc('try_delete_address', {
+        p_address_id: addressId,
+      });
+
+      if (error) throw error;
+
+      console.log(
+        `[Profile] Endereço ID: ${addressId} soft-deleted via RPC com sucesso`,
+      );
+
       setAddresses(prev => prev.filter(a => a.id !== addressId));
-      showSnackbar('Endereço removido com sucesso!');
+      showSnackbar('Endereço removido com sucesso');
     } catch (err: any) {
-      showSnackbar('Erro ao remover: ' + err.message, true);
+      console.error('[Profile] Erro ao tentar remover endereço:', err);
+      showSnackbar(err.message, true);
     } finally {
       setLoading(false);
     }
+  }
+
+  function confirmRemoveAddress(addressId: string) {
+    Alert.alert(
+      'Remover Endereço',
+      'Tem certeza que deseja remover este endereço da sua lista?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: () => removeAddress(addressId),
+        },
+      ],
+    );
   }
 
   return (
@@ -300,7 +334,7 @@ export function Profile() {
                     addressToEdit: address,
                   })
                 }
-                onDelete={() => removeAddress(address.id)}
+                onDelete={() => confirmRemoveAddress(address.id)}
               />
             ))
           )}

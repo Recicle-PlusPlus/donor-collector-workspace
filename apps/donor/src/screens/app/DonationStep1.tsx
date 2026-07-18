@@ -50,6 +50,7 @@ export function DonationStep1() {
         const { data: addrs } = await supabase
           .from('addresses')
           .select('*')
+          .eq('is_deleted', false)
           .eq('user_id', user.id);
         if (addrs) {
           setAddresses(addrs);
