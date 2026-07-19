@@ -22,11 +22,20 @@ export const useSubmitReview = () => {
         p_comment: data.comment?.trim() || null,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useSubmitReview] Erro ao enviar review:', error);
+        throw error;
+      }
 
+      console.log('[Review] Review salvo:', {
+        donation: data.donation_id,
+        reviewee: data.reviewee_id,
+        rating: data.rating,
+        hasComment: !!data.comment
+      });
       return { success: true };
     } catch (error) {
-      console.error('Erro ao submeter avaliação:', error);
+      console.error('[useSubmitReview] Falha na requisição:', error);
       return { success: false, error };
     } finally {
       setSubmitting(false);

@@ -7,7 +7,7 @@ import { Home } from '../screens/app/Home';
 import { Profile } from '../screens/app/Profile';
 import { MarketplaceScreen } from '@workspace/ui/src/marketplace/MarketplaceScreen';
 import { useAuth } from '@workspace/db/src/contexts/AuthContext';
-import { CompletedDonationsshare } from '../screens/app/CompletedDonations';
+import { CompletedDonations } from '../screens/app/CompletedDonations';
 
 const Tab = createBottomTabNavigator();
 
@@ -41,7 +41,7 @@ export function MainTabs() {
       />
       <Tab.Screen
         name="CompletedDonationsTab"
-        component={CompletedDonationsshare}
+        component={CompletedDonations}
         options={{
           tabBarLabel: 'Histórico',
           tabBarIcon: ({ color, size }) => (

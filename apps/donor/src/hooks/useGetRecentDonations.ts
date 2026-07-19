@@ -36,7 +36,7 @@ export function useGetRecentDonations(donorId?: string) {
       .limit(5);
 
     if (fetchError) {
-      console.error('Erro ao buscar histórico de doações:', fetchError);
+      console.error('[useGetRecentDonations] Erro ao buscar histórico de doações:', fetchError);
       setError(fetchError);
     } else {
       setDonations(data || []);

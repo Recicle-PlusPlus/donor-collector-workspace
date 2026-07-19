@@ -19,7 +19,7 @@ interface ReviewModalProps {
   onSuccess: () => void;
   title: string;
   donationId: string;
-  revieweeId?: string;
+  revieweeId: string;
 }
 
 export const ReviewModal: React.FC<ReviewModalProps> = ({
@@ -65,14 +65,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
   const handleSubmit = async () => {
     if (rating === 0 || submitting) return;
-
-    if (!revieweeId) {
-      Alert.alert(
-        'Erro',
-        'Não foi possível identificar a pessoa que será avaliada.',
-      );
-      return;
-    }
 
     setSubmitting(true);
     try {

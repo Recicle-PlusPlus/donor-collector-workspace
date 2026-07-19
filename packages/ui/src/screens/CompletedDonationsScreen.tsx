@@ -14,7 +14,7 @@ import { useAuth } from '@workspace/db/src/contexts/AuthContext';
 import { DonationCard } from '@workspace/ui/src/components/DonationCard';
 import { getSaoPauloWeekKey } from '../utils/donation';
 
-export function CompletedDonations({
+export function CompletedDonationsScreen({
   userId,
   userRole,
   navigationRouteName,

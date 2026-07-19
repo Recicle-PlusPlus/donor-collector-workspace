@@ -76,7 +76,7 @@ export function DonationDetailsScreen() {
         visible={showReview}
         title="Seu item foi coletado! Como foi a experiência?"
         donationId={donationId}
-        revieweeId={donation?.collector_id || donation?.collector?.id}
+        revieweeId={donation?.collector_id}
         onClose={() => setShowReview(false)}
         onSuccess={handleReviewSuccess}
       />

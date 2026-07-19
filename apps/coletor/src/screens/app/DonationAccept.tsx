@@ -120,9 +120,7 @@ export function DonationAccept() {
   };
 
   const handleReviewClose = async () => {
-    Alert.alert('Sucesso!', 'Coleta finalizada sem avaliação.');
     setShowReview(false);
-    navigation.navigate('Main', { refresh: true });
   };
 
   if (error || (!loading && !donation)) {
@@ -149,7 +147,7 @@ export function DonationAccept() {
         visible={showReview}
         title="Coleta finalizada! Como foi o doador?"
         donationId={donationId}
-        revieweeId={donation?.donor?.id || (donation as any)?.donor_id}
+        revieweeId={donation?.donor_id}
         onClose={handleReviewClose}
         onSuccess={handleReviewSuccess}
       />

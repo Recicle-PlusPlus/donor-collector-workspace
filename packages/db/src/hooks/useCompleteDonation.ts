@@ -14,9 +14,10 @@ export const useCompleteDonation = () => {
 
       if (error) throw error;
 
+      console.log(`[useCompleteDonation] Coleta ${donationId} finalizada com sucesso!`);
       return { success: true };
     } catch (error) {
-      console.error('Erro ao finalizar coleta:', error);
+      console.error(`[useCompleteDonation] Erro ao finalizar coleta ${donationId}:`, error);
       return { success: false, error };
     } finally {
       setCompleting(false);
