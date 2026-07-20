@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { supabase } from '@workspace/db';
+import { supabase, useGetDonationDetails } from '@workspace/db';
 import { SharedDonationDetailsScreen } from '@workspace/ui/src/components/SharedDonationDetailsScreen';
-import { useGetDonationDetails } from '../../hooks/useGetDonationDetails';
-import { Alert } from 'react-native';
+import { shouldRequestReview } from '@workspace/ui/src/utils/donation';
+import { Alert, View } from 'react-native';
+import { ReviewModal } from '@workspace/ui/src/components/ReviewModal';
 
 export function DonationDetailsScreen() {
   const route = useRoute<any>();
@@ -11,6 +12,19 @@ export function DonationDetailsScreen() {
   const { donationId } = route.params;
 
   const { donation, loading } = useGetDonationDetails(donationId);
+
+  const [showReview, setShowReview] = useState(false);
+
+  useEffect(() => {
+    if (shouldRequestReview(donation, 'donor')) {
+      setShowReview(true);
+    }
+  }, [donation?.status, donation?.completed_at, donation?.donor_reviewed]);
+
+  const handleReviewSuccess = () => {
+    setShowReview(false);
+    navigation.navigate('Main', { refresh: true });
+  };
 
   const handleCancel = async () => {
     Alert.alert(
@@ -49,12 +63,23 @@ export function DonationDetailsScreen() {
   };
 
   return (
-    <SharedDonationDetailsScreen
-      donation={donation}
-      loading={loading}
-      role="donor"
-      onCancel={handleCancel}
-      onOpenChat={handleOpenChat}
-    />
+    <View style={{ flex: 1 }}>
+      <SharedDonationDetailsScreen
+        donation={donation}
+        loading={loading}
+        role="donor"
+        onCancel={handleCancel}
+        onOpenChat={handleOpenChat}
+      />
+
+      <ReviewModal
+        visible={showReview}
+        title="Seu item foi coletado! Como foi a experiência?"
+        donationId={donationId}
+        revieweeId={donation?.collector_id}
+        onClose={() => setShowReview(false)}
+        onSuccess={handleReviewSuccess}
+      />
+    </View>
   );
 }

@@ -21,7 +21,9 @@ export function useGetRecentDonations(donorId?: string) {
         `
         id,
         status,
+        donor_reviewed,
         created_at,
+        completed_at,
         addresses ( street, num, neighborhood ),
         collector:users!collector_id ( name ),
         donation_items ( materials ( name ) ),
@@ -29,11 +31,12 @@ export function useGetRecentDonations(donorId?: string) {
       `,
       )
       .eq('donor_id', donorId)
+      .in('status', ['pending', 'accepted'])
       .order('created_at', { ascending: false })
       .limit(5);
 
     if (fetchError) {
-      console.error('Erro ao buscar histórico de doações:', fetchError);
+      console.error('[useGetRecentDonations] Erro ao buscar histórico de doações:', fetchError);
       setError(fetchError);
     } else {
       setDonations(data || []);

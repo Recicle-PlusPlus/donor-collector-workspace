@@ -6,6 +6,7 @@ export * from './components/ErrorModal';
 export * from './components/NotificationPermissionDialog';
 
 export * from './theme/colors';
+export * from './utils/donation';
 
 export * from './components/chat/ChatBubble';
 export * from './components/chat/ChatInput';

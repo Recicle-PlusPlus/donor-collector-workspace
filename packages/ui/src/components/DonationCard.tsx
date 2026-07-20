@@ -2,18 +2,28 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '@workspace/ui';
+import {
+  DonationRole,
+  DonationStatus,
+  formatCompletedAt,
+  getDonationDisplayStatus,
+} from '../utils/donation';
 
 export interface DonationItem {
   id: string;
-  status: 'pending' | 'accepted' | 'completed' | 'cancelled';
+  status: DonationStatus;
   donation_schedules?: any[];
   donation_items?: any[];
   addresses?: any;
+  completed_at?: string;
+  donor_reviewed?: boolean;
+  collector_reviewed?: boolean;
 }
 
 interface DonationCardProps {
   donation: DonationItem;
   onPress: () => void;
+  viewerRole?: DonationRole;
 }
 
 const statusConfig = {
@@ -41,13 +51,25 @@ const statusConfig = {
     color: colors.error || '#ef4444',
     bg: 'rgba(239, 68, 68, 0.15)',
   },
+  awaiting_review: {
+    label: 'Aguardando Avaliação',
+    icon: 'star-circle-outline',
+    color: '#8b5cf6',
+    bg: '#f3e8ff',
+  },
 };
 
 const SHORT_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MAX_VISIBLE_DAYS = 3;
 
-export const DonationCard = ({ donation, onPress }: DonationCardProps) => {
-  const currentStatus = statusConfig[donation.status] || statusConfig.pending;
+export const DonationCard = ({
+  donation,
+  onPress,
+  viewerRole,
+}: DonationCardProps) => {
+  const displayStatus = getDonationDisplayStatus(donation, viewerRole);
+  const currentStatus = statusConfig[displayStatus] || statusConfig.pending;
+  const completedAt = formatCompletedAt(donation.completed_at);
 
   const renderSchedules = () => {
     if (
@@ -124,6 +146,25 @@ export const DonationCard = ({ donation, onPress }: DonationCardProps) => {
               {currentStatus.label}
             </Text>
           </View>
+
+          {(displayStatus === 'completed' ||
+            displayStatus === 'awaiting_review') &&
+            completedAt && (
+              <View style={styles.infoRow}>
+                <MaterialCommunityIcons
+                  name="calendar-check-outline"
+                  size={16}
+                  color={colors.success || '#10b981'}
+                  style={styles.infoIcon}
+                />
+                <Text style={styles.completedAtText} numberOfLines={1}>
+                  {displayStatus === 'completed'
+                    ? 'Concluída'
+                    : 'Entrega realizada'}{' '}
+                  em {completedAt}
+                </Text>
+              </View>
+            )}
 
           {/* Horários */}
           <View style={styles.infoRow}>
@@ -222,6 +263,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.text || '#0f172a',
     fontWeight: '500',
+    flexShrink: 1,
+  },
+  completedAtText: {
+    fontSize: 13,
+    color: colors.success || '#10b981',
+    fontWeight: '600',
     flexShrink: 1,
   },
   textDark: { fontWeight: 'bold', color: colors.text || '#0f172a' },

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,13 @@ import {
   Linking,
   Platform,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { DonationCollection } from '../../screens/map/MapScreen';
-
+import { useCompleteDonation } from '@workspace/db';
+import { ReviewModal } from '@workspace/ui/src/components/ReviewModal';
 interface Props {
   collection: DonationCollection | null;
   onClose: () => void;
@@ -18,6 +20,8 @@ interface Props {
 
 export function CollectionDetailsCard({ collection, onClose }: Props) {
   const navigation = useNavigation<any>();
+  const { completeDonation, completing } = useCompleteDonation();
+  const [showReview, setShowReview] = useState(false);
 
   if (!collection) return null;
 
@@ -39,6 +43,23 @@ export function CollectionDetailsCard({ collection, onClose }: Props) {
     });
   };
 
+  const handleComplete = async () => {
+    const result = await completeDonation(collection.donation_id);
+    if (result.success) {
+      setShowReview(true);
+    } else {
+      Alert.alert(
+        'Erro',
+        'Não foi possível finalizar a coleta. Tente novamente.',
+      );
+    }
+  };
+
+  const handleReviewSuccess = () => {
+    setShowReview(false);
+    onClose();
+    navigation.navigate('Main', { refresh: true });
+  };
   return (
     <View style={styles.overlayContainer}>
       <View
@@ -114,18 +135,42 @@ export function CollectionDetailsCard({ collection, onClose }: Props) {
               />
             </TouchableOpacity>
 
-            {/* Botão Dinâmico */}
-            <TouchableOpacity
-              onPress={handleAction}
-              style={[
-                styles.acceptButton,
-                isAccepted ? styles.resumeButton : styles.newButton,
-              ]}>
-              <Text style={styles.acceptText}>Ver detalhes</Text>
-            </TouchableOpacity>
+            {isAccepted ? (
+              <>
+                <TouchableOpacity
+                  onPress={handleAction}
+                  style={[styles.acceptButton, styles.detailsButtonOutline]}>
+                  <Text style={styles.detailsTextOutline}>Detalhes</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleComplete}
+                  disabled={completing}
+                  style={[styles.acceptButton, styles.resumeButton]}>
+                  <Text style={styles.acceptText}>
+                    {completing ? 'Aguarde...' : 'Finalizar'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity
+                onPress={handleAction}
+                style={[styles.acceptButton, styles.newButton]}>
+                <Text style={styles.acceptText}>Ver detalhes</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
+
+      <ReviewModal
+        visible={showReview}
+        title="Coleta finalizada! Como foi o doador?"
+        donationId={collection.donation_id}
+        revieweeId={collection.donor_id}
+        onClose={() => setShowReview(false)}
+        onSuccess={handleReviewSuccess}
+      />
     </View>
   );
 }
@@ -250,7 +295,7 @@ const styles = StyleSheet.create({
   },
   acceptButton: {
     height: 44,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -263,6 +308,16 @@ const styles = StyleSheet.create({
   },
   acceptText: {
     color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  detailsButtonOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#ca8a04',
+  },
+  detailsTextOutline: {
+    color: '#ca8a04',
     fontSize: 14,
     fontWeight: '600',
   },

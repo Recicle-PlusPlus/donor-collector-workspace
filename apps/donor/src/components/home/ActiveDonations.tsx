@@ -36,6 +36,7 @@ export const ActiveDonations = ({
             <DonationCard
               key={d.id}
               donation={d}
+              viewerRole="donor"
               onPress={() =>
                 navigation.navigate('DonationDetails', { donationId: d.id })
               }

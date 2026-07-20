@@ -12,10 +12,15 @@ import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  DonationStatus,
+  formatCompletedAt,
+  getDonationDisplayStatus,
+} from '../utils/donation';
 
 export interface DonationDetailData {
   id: string;
-  status: 'pending' | 'accepted' | 'completed' | 'cancelled';
+  status: DonationStatus;
   items?: any[];
   schedules?: any[];
   address?: any;
@@ -23,6 +28,9 @@ export interface DonationDetailData {
   collector?: { name: string; id: string };
   donor?: { name: string; id: string };
   accepted_at?: string;
+  completed_at?: string;
+  donor_reviewed?: boolean;
+  collector_reviewed?: boolean;
 }
 
 interface SharedDetailsProps {
@@ -32,6 +40,7 @@ interface SharedDetailsProps {
   onCancel?: () => void;
   onAccept?: () => void;
   onOpenChat?: () => void;
+  onComplete?: () => void;
 }
 
 const statusConfig = {
@@ -46,6 +55,12 @@ const statusConfig = {
     icon: 'truck-outline',
     color: colors.primary,
     bg: 'rgba(45, 125, 70, 0.15)',
+  },
+  awaiting_review: {
+    label: 'Aguardando Review',
+    icon: 'star-circle-outline',
+    color: '#8b5cf6',
+    bg: 'rgba(139, 92, 246, 0.15)',
   },
   completed: {
     label: 'Concluída',
@@ -78,6 +93,7 @@ export const SharedDonationDetailsScreen = ({
   onCancel,
   onAccept,
   onOpenChat,
+  onComplete,
 }: SharedDetailsProps) => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -90,10 +106,12 @@ export const SharedDonationDetailsScreen = ({
     );
   }
 
-  const currentStatus = statusConfig[donation.status] || statusConfig.pending;
-  const isPending = donation.status === 'pending';
+  const displayStatus = getDonationDisplayStatus(donation, role);
+  const currentStatus = statusConfig[displayStatus] || statusConfig.pending;
+  const completedAt = formatCompletedAt(donation.completed_at);
+  const isPending = displayStatus === 'pending';
   const isAcceptedOrCompleted =
-    donation.status === 'accepted' || donation.status === 'completed';
+    displayStatus === 'accepted' || displayStatus === 'completed';
 
   const renderMaterials = () => {
     const items = donation.items || [];
@@ -204,7 +222,7 @@ export const SharedDonationDetailsScreen = ({
 
   const renderActionBar = () => {
     if (role === 'donor') {
-      const canCancel = isPending || donation.status === 'accepted';
+      const canCancel = isPending || displayStatus === 'accepted';
 
       return (
         <View
@@ -245,7 +263,39 @@ export const SharedDonationDetailsScreen = ({
               <Text style={styles.btnPrimaryText}>Aceitar Coleta</Text>
             </TouchableOpacity>
           )}
-          {isAcceptedOrCompleted && (
+          {displayStatus === 'accepted' && (
+            <>
+              <TouchableOpacity
+                style={[
+                  styles.btnPrimary,
+                  { flex: 0.3, backgroundColor: '#F1F5F9', marginRight: 12 },
+                ]}
+                onPress={onOpenChat}>
+                <MaterialCommunityIcons
+                  name="chat-processing-outline"
+                  size={24}
+                  color={colors.text}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.btnPrimary,
+                  { flex: 0.7, backgroundColor: '#ca8a04' },
+                ]}
+                onPress={onComplete}>
+                <MaterialCommunityIcons
+                  name="check-circle-outline"
+                  size={20}
+                  color="#FFF"
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={styles.btnPrimaryText}>Finalizar Coleta</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {displayStatus === 'completed' && (
             <TouchableOpacity style={styles.btnPrimary} onPress={onOpenChat}>
               <MaterialCommunityIcons
                 name="chat-processing-outline"
@@ -294,6 +344,16 @@ export const SharedDonationDetailsScreen = ({
             <Text style={[styles.statusValue, { color: currentStatus.color }]}>
               {currentStatus.label}
             </Text>
+            {(displayStatus === 'completed' ||
+              displayStatus === 'awaiting_review') &&
+              completedAt && (
+                <Text style={styles.completedAt}>
+                  {displayStatus === 'completed'
+                    ? 'Concluída'
+                    : 'Entrega realizada'}{' '}
+                  em {completedAt}
+                </Text>
+              )}
           </View>
         </View>
 
@@ -370,6 +430,11 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   statusValue: { fontSize: 16, fontWeight: 'bold' },
+  completedAt: {
+    marginTop: 4,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
 
   cardHeader: {
     flexDirection: 'row',
