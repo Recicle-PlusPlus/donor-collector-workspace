@@ -129,7 +129,7 @@ export default function MapScreen() {
         `,
         )
         .eq('collector_id', user.id)
-        .in('status', ['accepted', 'completed']);
+        .in('status', ['accepted']);
 
       if (acceptedError)
         console.error('[MapScreen] Erro coletas aceitas:', acceptedError);
