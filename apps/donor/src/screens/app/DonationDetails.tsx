@@ -62,6 +62,13 @@ export function DonationDetailsScreen() {
     navigation.navigate('Chat', { donationId });
   };
 
+  const handleOpenCollectorProfile = () => {
+    const collectorId = donation?.collector_id || donation?.collector?.id;
+    if (!collectorId) return;
+
+    navigation.navigate('ChatUserProfile', { userId: collectorId });
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <SharedDonationDetailsScreen
@@ -70,6 +77,7 @@ export function DonationDetailsScreen() {
         role="donor"
         onCancel={handleCancel}
         onOpenChat={handleOpenChat}
+        onOpenProfile={handleOpenCollectorProfile}
       />
 
       <ReviewModal

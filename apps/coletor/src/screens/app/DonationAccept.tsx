@@ -19,6 +19,7 @@ type RootStackParamList = {
   Main: { refresh?: boolean };
   DonationAccept: { donationId: string };
   Chat: { donationId: string };
+  ChatUserProfile: { userId: string };
 };
 
 type AcceptScreenRouteProp = RouteProp<RootStackParamList, 'DonationAccept'>;
@@ -90,6 +91,13 @@ export function DonationAccept() {
   const handleOpenChat = () => {
     navigation.navigate('Chat', { donationId });
   };
+
+  const handleOpenDonorProfile = () => {
+    const donorId = donation?.donor?.id || (donation as any)?.donor_id;
+    if (!donorId) return;
+
+    navigation.navigate('ChatUserProfile', { userId: donorId });
+  };
   const handleComplete = async () => {
     Alert.alert(
       'Finalizar Coleta',
@@ -141,6 +149,7 @@ export function DonationAccept() {
         role="collector"
         onAccept={handleAcceptDonation}
         onOpenChat={handleOpenChat}
+        onOpenProfile={handleOpenDonorProfile}
         onComplete={handleComplete}
       />
       <ReviewModal

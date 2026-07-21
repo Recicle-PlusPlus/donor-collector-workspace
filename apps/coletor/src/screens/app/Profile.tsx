@@ -19,6 +19,7 @@ import {
   InputIcon,
   InputIconMask,
   ButtonDefault,
+  UserReviewsSection,
 } from '@workspace/ui';
 
 export function Profile() {
@@ -28,6 +29,7 @@ export function Profile() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({
@@ -42,7 +44,7 @@ export function Profile() {
 
       const { data: profileData } = await supabase
         .from('users')
-        .select('name, phone, photo_url')
+        .select('name, phone, photo_url, created_at')
         .eq('id', user.id)
         .single();
 
@@ -50,6 +52,7 @@ export function Profile() {
         setName(profileData.name || '');
         setPhone(profileData.phone || '');
         setPhotoUrl(profileData.photo_url || null);
+        setCreatedAt(profileData.created_at || null);
       }
     }
 
@@ -133,6 +136,15 @@ export function Profile() {
     await supabase.auth.signOut();
   }
 
+  const memberSince = createdAt
+    ? new Date(createdAt).toLocaleDateString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      })
+    : 'Data não disponível';
+
   return (
     <View style={styles.container}>
       {loading && <Loading />}
@@ -173,6 +185,12 @@ export function Profile() {
             </View>
           </TouchableOpacity>
         </View>
+
+        {user && (
+          <View style={styles.reviewsContainer}>
+            <UserReviewsSection userId={user.id} />
+          </View>
+        )}
 
         {/* FORMULÁRIO */}
         <View style={styles.formContainer}>
@@ -225,6 +243,18 @@ export function Profile() {
                 />
               </View>
             )}
+          </View>
+        </View>
+
+        <View style={styles.accountInfoContainer}>
+          <MaterialCommunityIcons
+            name="calendar-account"
+            size={22}
+            color={colors.primary}
+          />
+          <View>
+            <Text style={styles.accountInfoLabel}>Membro desde</Text>
+            <Text style={styles.accountInfoValue}>{memberSince}</Text>
           </View>
         </View>
       </ScrollView>
@@ -286,6 +316,24 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   formContainer: { paddingHorizontal: 20, marginBottom: 20 },
+  reviewsContainer: { paddingHorizontal: 20, marginBottom: 20 },
+  accountInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 20,
+    marginTop: 4,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+  },
+  accountInfoLabel: { fontSize: 12, color: colors.textSecondary },
+  accountInfoValue: {
+    marginTop: 2,
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
   rowBetween: {
     flexDirection: 'row',
     justifyContent: 'space-between',

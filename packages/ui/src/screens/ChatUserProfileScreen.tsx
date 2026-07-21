@@ -14,6 +14,7 @@ import { useRoute } from '@react-navigation/native';
 import { supabase } from '@workspace/db';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { UserReviewsSection } from '../components/UserReviewsSection';
 
 const { width, height } = Dimensions.get('window');
 
@@ -39,7 +40,7 @@ export function ChatUserProfileScreen() {
         .from('donations')
         .select('*', { count: 'exact', head: true })
         .or(`donor_id.eq.${userId},collector_id.eq.${userId}`)
-        .eq('status', 'completed');
+        .in('status', ['completed', 'awaiting_review']);
 
       const [userRes, countRes] = await Promise.all([userReq, countReq]);
 
@@ -112,6 +113,8 @@ export function ChatUserProfileScreen() {
 
       <View style={styles.content}>
         <Text style={styles.sectionTitle}>Estatísticas do Usuário</Text>
+
+        <UserReviewsSection userId={userId} />
 
         <View style={styles.infoRow}>
           <MaterialCommunityIcons
