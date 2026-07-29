@@ -17,6 +17,7 @@ import { CollectionMarker } from '../../components/map/CollectionMarker';
 import { MapHeader } from '../../components/map/MapHeader';
 import { CollectionDetailsCard } from '../../components/map/CollectionDetailsCard';
 import { RadiusBottomSheet } from '../../components/RadiusBottomSheet';
+import { TimeRangeBottomSheet } from '../../components/map/TimeRangeBottomSheet';
 
 export interface DonationCollection {
   donation_id: string;
@@ -49,6 +50,10 @@ export default function MapScreen() {
   const [filterRadiusKm, setFilterRadiusKm] = useState(10);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [showRadiusSheet, setShowRadiusSheet] = useState(false);
+  const [startHour, setStartHour] = useState<number>(8);
+  const [endHour, setEndHour] = useState<number>(20);
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [showTimeSheet, setShowTimeSheet] = useState(false);
 
   useEffect(() => {
     async function loadMaterials() {
@@ -82,16 +87,26 @@ export default function MapScreen() {
     if (location) {
       fetchCollections(location.coords.latitude, location.coords.longitude);
     }
-  }, [location, onlyAvailableNow, filterRadiusKm, selectedMaterials]);
+  }, [
+    location,
+    onlyAvailableNow,
+    filterRadiusKm,
+    selectedMaterials,
+    startHour,
+    endHour,
+    selectedDays,
+  ]);
 
   async function fetchCollections(lat: number, lng: number) {
     setLoading(true);
     try {
-      console.log(`[MapScreen] Buscando coletas. Raio: ${filterRadiusKm}km`);
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+
+      const formattedStart = `${startHour.toString().padStart(2, '0')}:00:00`;
+      const formattedEnd = `${endHour.toString().padStart(2, '0')}:00:00`;
 
       const { data: pendingData, error: rpcError } = await supabase.rpc(
         'get_available_donations',
@@ -102,6 +117,10 @@ export default function MapScreen() {
           p_material_ids:
             selectedMaterials.length > 0 ? selectedMaterials : null,
           p_available_now: onlyAvailableNow,
+          p_start_time:
+            startHour === 8 && endHour === 20 ? null : formattedStart,
+          p_end_time: startHour === 8 && endHour === 20 ? null : formattedEnd,
+          p_days_of_week: selectedDays.length > 0 ? selectedDays : null,
         },
       );
 
@@ -110,7 +129,7 @@ export default function MapScreen() {
       let mappedPending: DonationCollection[] = [];
       if (pendingData) {
         mappedPending = pendingData.map((d: any) => ({
-          donation_id: d.donation_id,
+          donation_id: d.id,
           donor_id: d.donor_id,
           distance_meters: d.distance_meters,
           status: d.status,
@@ -217,6 +236,11 @@ export default function MapScreen() {
         toggleMaterial={toggleMaterial}
         radiusKm={filterRadiusKm}
         onOpenRadius={() => setShowRadiusSheet(true)}
+        startHour={startHour}
+        endHour={endHour}
+        selectedDays={selectedDays}
+        onOpenTimeFilter={() => setShowTimeSheet(true)}
+        onClearDays={() => setSelectedDays([])}
       />
 
       {/* Botões Flutuantes (Direita) */}
@@ -255,6 +279,19 @@ export default function MapScreen() {
         currentRadius={filterRadiusKm}
         onClose={() => setShowRadiusSheet(false)}
         onApply={radius => setFilterRadiusKm(radius)}
+      />
+
+      <TimeRangeBottomSheet
+        visible={showTimeSheet}
+        currentStartHour={startHour}
+        currentEndHour={endHour}
+        currentDays={selectedDays}
+        onClose={() => setShowTimeSheet(false)}
+        onApply={(min, max, days) => {
+          setStartHour(min);
+          setEndHour(max);
+          setSelectedDays(days);
+        }}
       />
 
       <CollectionDetailsCard
