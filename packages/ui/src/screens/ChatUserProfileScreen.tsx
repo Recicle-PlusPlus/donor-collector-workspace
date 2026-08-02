@@ -20,7 +20,7 @@ const { width, height } = Dimensions.get('window');
 
 export function ChatUserProfileScreen() {
   const route = useRoute<any>();
-  const { userId } = route.params;
+  const { userId, profileRole } = route.params;
 
   const [userInfo, setUserInfo] = useState<any>(null);
   const [donationCount, setDonationCount] = useState(0);
@@ -114,7 +114,7 @@ export function ChatUserProfileScreen() {
       <View style={styles.content}>
         <Text style={styles.sectionTitle}>Estatísticas do Usuário</Text>
 
-        <UserReviewsSection userId={userId} />
+        <UserReviewsSection userId={userId} profileRole={profileRole} />
 
         <View style={styles.infoRow}>
           <MaterialCommunityIcons

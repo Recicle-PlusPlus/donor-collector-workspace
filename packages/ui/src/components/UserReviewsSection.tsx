@@ -9,8 +9,30 @@ import {
   View,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useUserReviews, UserReview } from '@workspace/db';
+import { useUserReviews, UserReview, ReviewProfileRole } from '@workspace/db';
 import { colors } from '../theme/colors';
+
+interface CriterionSummary {
+  key: string;
+  label: string;
+}
+
+const PROFILE_CRITERIA: Record<ReviewProfileRole, CriterionSummary[]> = {
+  donor: [
+    { key: 'material_condition', label: 'Estado do material' },
+    { key: 'description_accuracy', label: 'Conforme a descrição' },
+    { key: 'pickup_readiness', label: 'Pronto para retirada' },
+    { key: 'wait_time', label: 'Tempo de espera' },
+    { key: 'communication', label: 'Agilidade nas respostas' },
+  ],
+  collector: [
+    { key: 'punctuality', label: 'Pontualidade' },
+    { key: 'material_care', label: 'Cuidado com os materiais' },
+    { key: 'communication', label: 'Agilidade nas respostas' },
+    { key: 'courtesy', label: 'Cordialidade' },
+    { key: 'collection_experience', label: 'Experiência com a coleta' },
+  ],
+};
 
 const renderStars = (rating: number, size: number) => (
   <View style={styles.starsRow}>
@@ -51,41 +73,105 @@ const formatReviewDate = (value: string) => {
   });
 };
 
-export function UserReviewsSection({ userId }: { userId: string }) {
+interface UserReviewsSectionProps {
+  userId: string;
+  profileRole: ReviewProfileRole;
+}
+
+export function UserReviewsSection({
+  userId,
+  profileRole,
+}: UserReviewsSectionProps) {
   const [visible, setVisible] = useState(false);
+  const [expandedReviewId, setExpandedReviewId] = useState<string | null>(null);
+  const criteria = PROFILE_CRITERIA[profileRole];
   const {
     averageRating,
     reviewCount,
+    criteriaAverages,
     reviews,
     summaryLoading,
     reviewsLoading,
     hasMore,
     error,
     loadReviews,
-  } = useUserReviews(userId);
+  } = useUserReviews(userId, profileRole);
 
   const openReviews = () => {
+    setExpandedReviewId(null);
     setVisible(true);
     loadReviews(true);
   };
 
-  const renderReview = ({ item }: { item: UserReview }) => (
-    <View style={styles.reviewCard}>
-      <Text style={styles.reviewAuthor}>
-        {item.reviewer_name?.trim() || 'Usuário'}
-      </Text>
-      <View style={styles.reviewMeta}>
-        {renderStars(item.rating, 14)}
-        <Text style={styles.metaSeparator}>•</Text>
-        <Text style={styles.reviewDate}>
-          {formatReviewDate(item.created_at)}
+  const renderReview = ({ item }: { item: UserReview }) => {
+    const expanded = expandedReviewId === item.donation_id;
+    const criterionAverage =
+      criteria.reduce(
+        (total, criterion) =>
+          total + (item.criteria_ratings[criterion.key] || 0),
+        0,
+      ) / criteria.length;
+
+    return (
+      <View style={styles.reviewCard}>
+        <Text style={styles.reviewAuthor}>
+          {item.reviewer_name?.trim() || 'Usuário'}
         </Text>
+        <View style={styles.reviewMeta}>
+          {renderStars(criterionAverage, 14)}
+          <Text style={styles.metaSeparator}>•</Text>
+          <Text style={styles.reviewDate}>
+            {formatReviewDate(item.created_at)}
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.commentButton}
+          onPress={() =>
+            setExpandedReviewId(current =>
+              current === item.donation_id ? null : item.donation_id,
+            )
+          }>
+          <Text
+            style={item.comment?.trim() ? styles.comment : styles.emptyComment}>
+            {item.comment?.trim() || 'Avaliação sem comentário.'}
+          </Text>
+          <View style={styles.commentDetailsHint}>
+            <Text style={styles.commentDetailsHintText}>
+              {expanded ? 'Ocultar notas' : 'Ver notas por critério'}
+            </Text>
+            <MaterialCommunityIcons
+              name={expanded ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={colors.primary}
+            />
+          </View>
+        </TouchableOpacity>
+
+        {expanded && (
+          <View style={styles.reviewCriteria}>
+            {criteria.map(criterion => {
+              const rating = item.criteria_ratings[criterion.key] || 0;
+              return (
+                <View key={criterion.key} style={styles.reviewCriterionRow}>
+                  <Text style={styles.reviewCriterionLabel}>
+                    {criterion.label}
+                  </Text>
+                  <View style={styles.reviewCriterionRating}>
+                    {renderStars(rating, 14)}
+                    <Text style={styles.reviewCriterionNumber}>
+                      {rating.toFixed(1)}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
       </View>
-      <Text style={item.comment?.trim() ? styles.comment : styles.emptyComment}>
-        {item.comment?.trim() || 'Avaliação sem comentário.'}
-      </Text>
-    </View>
-  );
+    );
+  };
 
   return (
     <>
@@ -137,6 +223,21 @@ export function UserReviewsSection({ userId }: { userId: string }) {
               onPress={() => setVisible(false)}>
               <MaterialCommunityIcons name="close" size={24} color="#334155" />
             </TouchableOpacity>
+          </View>
+
+          <View style={styles.modalCriteriaSummary}>
+            <Text style={styles.criteriaTitle}>Médias por critério</Text>
+            {criteria.map(criterion => (
+              <View key={criterion.key} style={styles.criteriaRow}>
+                <Text style={styles.criteriaLabel}>{criterion.label}</Text>
+                <View style={styles.criteriaValue}>
+                  {renderStars(criteriaAverages[criterion.key] || 0, 15)}
+                  <Text style={styles.criteriaNumber}>
+                    {(criteriaAverages[criterion.key] || 0).toFixed(1)}
+                  </Text>
+                </View>
+              </View>
+            ))}
           </View>
 
           <FlatList
@@ -205,6 +306,35 @@ const styles = StyleSheet.create({
   starsRow: { flexDirection: 'row' },
   reviewCount: { marginTop: 4, fontSize: 12, color: colors.textSecondary },
   summaryChevron: { position: 'absolute', right: 15 },
+  modalCriteriaSummary: {
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: '#F8FAFC',
+  },
+  criteriaTitle: {
+    color: '#334155',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  criteriaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  criteriaLabel: { flex: 1, color: '#475569', fontSize: 13 },
+  criteriaValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 12,
+  },
+  criteriaNumber: { color: '#1E293B', fontSize: 14, fontWeight: '700' },
   modalContainer: { flex: 1, backgroundColor: '#FFF' },
   modalHeader: {
     paddingTop: 54,
@@ -247,6 +377,51 @@ const styles = StyleSheet.create({
   reviewDate: { fontSize: 12, color: colors.textSecondary },
   comment: { fontSize: 14, lineHeight: 20, color: '#374151' },
   emptyComment: { fontSize: 14, fontStyle: 'italic', color: '#94A3B8' },
+  commentButton: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 12,
+  },
+  commentDetailsHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  commentDetailsHintText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  reviewCriteria: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    marginTop: 8,
+    padding: 12,
+  },
+  reviewCriterionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 5,
+  },
+  reviewCriterionLabel: {
+    flex: 1,
+    color: '#475569',
+    fontSize: 12,
+    marginRight: 8,
+  },
+  reviewCriterionRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  reviewCriterionNumber: {
+    minWidth: 24,
+    color: '#1E293B',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'right',
+  },
   emptyContainer: { alignItems: 'center', padding: 30 },
   emptyText: {
     marginTop: 12,

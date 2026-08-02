@@ -165,9 +165,10 @@ export function CollectionDetailsCard({ collection, onClose }: Props) {
 
       <ReviewModal
         visible={showReview}
-        title="Coleta finalizada! Como foi o doador?"
+        title="Entrega finalizada! Como foi sua coleta?"
         donationId={collection.donation_id}
         revieweeId={collection.donor_id}
+        reviewerRole="collector"
         onClose={() => setShowReview(false)}
         onSuccess={handleReviewSuccess}
       />

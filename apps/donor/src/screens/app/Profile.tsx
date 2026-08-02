@@ -268,7 +268,7 @@ export function Profile() {
 
         {user && (
           <View style={styles.reviewsContainer}>
-            <UserReviewsSection userId={user.id} />
+            <UserReviewsSection userId={user.id} profileRole="donor" />
           </View>
         )}
 

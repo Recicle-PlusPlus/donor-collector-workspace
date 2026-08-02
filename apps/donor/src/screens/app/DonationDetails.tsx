@@ -66,7 +66,10 @@ export function DonationDetailsScreen() {
     const collectorId = donation?.collector_id || donation?.collector?.id;
     if (!collectorId) return;
 
-    navigation.navigate('ChatUserProfile', { userId: collectorId });
+    navigation.navigate('ChatUserProfile', {
+      userId: collectorId,
+      profileRole: 'collector',
+    });
   };
 
   return (
@@ -82,9 +85,10 @@ export function DonationDetailsScreen() {
 
       <ReviewModal
         visible={showReview}
-        title="Seu item foi coletado! Como foi a experiência?"
+        title="Entrega finalizada! Como foi sua coleta?"
         donationId={donationId}
         revieweeId={donation?.collector_id}
+        reviewerRole="donor"
         onClose={() => setShowReview(false)}
         onSuccess={handleReviewSuccess}
       />

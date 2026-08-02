@@ -24,7 +24,10 @@ export type RootStackParamList = {
   Chat: { donationId: string };
   Extrato: undefined;
   Notifications: undefined;
-  ChatUserProfile: { userId: string };
+  ChatUserProfile: {
+    userId: string;
+    profileRole: 'donor' | 'collector';
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
