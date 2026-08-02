@@ -9,7 +9,6 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import {
   ArrowLeft,
@@ -18,30 +17,15 @@ import {
   CalendarDays,
   FileText,
   CheckCircle2,
-  Trash2,
-  Clock,
-  Plus,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, NotificationPermissionDialog } from '@workspace/ui';
 import { supabase } from '@workspace/db';
 import { RootStackParamList } from '../../navigation';
-
-const DAYS_OF_WEEK = [
-  { id: 0, label: 'Dom', full: 'Domingo' },
-  { id: 1, label: 'Seg', full: 'Segunda-feira' },
-  { id: 2, label: 'Ter', full: 'Terça-feira' },
-  { id: 3, label: 'Qua', full: 'Quarta-feira' },
-  { id: 4, label: 'Qui', full: 'Quinta-feira' },
-  { id: 5, label: 'Sex', full: 'Sexta-feira' },
-  { id: 6, label: 'Sáb', full: 'Sábado' },
-];
-
-interface ScheduleInterval {
-  day_of_week: number;
-  start_time: Date;
-  end_time: Date;
-}
+import {
+  ScheduleEntry,
+  SchedulePicker,
+} from '../../components/SchedulerPicker';
 
 export function DonationStep2() {
   const insets = useSafeAreaInsets();
@@ -50,66 +34,26 @@ export function DonationStep2() {
   const { address, materials } = route.params;
 
   const [notes, setNotes] = useState('');
-  const [schedules, setSchedules] = useState<ScheduleInterval[]>([]);
+  const [schedules, setSchedules] = useState<ScheduleEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const [pendingSuccessNavigation, setPendingSuccessNavigation] =
     useState(false);
 
-  const [isAdding, setIsAdding] = useState(false);
-  const [newDay, setNewDay] = useState(1);
-  const [newStart, setNewStart] = useState(
-    new Date(new Date().setHours(8, 0, 0, 0)),
-  );
-  const [newEnd, setNewEnd] = useState(
-    new Date(new Date().setHours(18, 0, 0, 0)),
-  );
-
-  const [showPicker, setShowPicker] = useState(false);
-  const [pickerTarget, setPickerTarget] = useState<'start' | 'end'>('start');
-
   const totalWeight = materials.reduce((acc, m) => acc + Number(m.weight), 0);
-
-  const onTimeChange = (event: any, selectedTime?: Date) => {
-    setShowPicker(false);
-    if (event.type === 'dismissed' || !selectedTime) return;
-
-    if (pickerTarget === 'start') {
-      setNewStart(selectedTime);
-    } else {
-      setNewEnd(selectedTime);
-    }
-  };
-
-  const handleAddSchedule = () => {
-    setSchedules(prev => [
-      ...prev,
-      { day_of_week: newDay, start_time: newStart, end_time: newEnd },
-    ]);
-    setIsAdding(false);
-  };
 
   const executeDonation = async () => {
     setLoading(true);
 
-    // Formata a hora
     const formattedSchedules = schedules.map(s => ({
-      day_of_week: s.day_of_week,
-      start_time: s.start_time.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      }),
-      end_time: s.end_time.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      }),
+      day_of_week: s.dayOfWeekId,
+      start_time: s.startTime,
+      end_time: s.endTime,
     }));
 
     const donationData = {
       p_address_id: address.id,
-      p_materials: materials, // [{ materialId, weight }]
+      p_materials: materials,
       p_notes: notes,
       p_schedules: formattedSchedules,
     };
@@ -242,7 +186,7 @@ export function DonationStep2() {
           </View>
         </View>
 
-        {/* Intervalos de Agendamento */}
+        {/* Componente Modular do SchedulePicker */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <CalendarDays color={colors.primary} size={16} />
@@ -250,128 +194,7 @@ export function DonationStep2() {
           </View>
 
           <View style={styles.card}>
-            {schedules.map((sched, idx) => (
-              <View key={idx} style={styles.scheduleRow}>
-                <View>
-                  <Text style={styles.scheduleText}>
-                    {DAYS_OF_WEEK[sched.day_of_week].full}
-                  </Text>
-                  <Text style={styles.scheduleSub}>
-                    Das{' '}
-                    {sched.start_time.toLocaleTimeString('pt-BR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}{' '}
-                    às{' '}
-                    {sched.end_time.toLocaleTimeString('pt-BR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() =>
-                    setSchedules(prev => prev.filter((_, i) => i !== idx))
-                  }>
-                  <Trash2 color="#ef4444" size={20} />
-                </TouchableOpacity>
-              </View>
-            ))}
-
-            {isAdding ? (
-              <View style={styles.addForm}>
-                <Text style={styles.formLabel}>Dia da Semana</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={{ marginBottom: 15 }}>
-                  {DAYS_OF_WEEK.map(d => (
-                    <TouchableOpacity
-                      key={d.id}
-                      onPress={() => setNewDay(d.id)}
-                      style={[
-                        styles.dayChip,
-                        newDay === d.id && styles.dayChipActive,
-                      ]}>
-                      <Text
-                        style={[
-                          styles.dayChipText,
-                          newDay === d.id && { color: '#fff' },
-                        ]}>
-                        {d.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-
-                <View style={styles.timeRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.formLabel}>Início</Text>
-                    <TouchableOpacity
-                      style={styles.timeBtn}
-                      onPress={() => {
-                        setPickerTarget('start');
-                        setShowPicker(true);
-                      }}>
-                      <Clock size={16} color={colors.primary} />
-                      <Text style={styles.timeBtnText}>
-                        {newStart.toLocaleTimeString('pt-BR', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.formLabel}>Fim</Text>
-                    <TouchableOpacity
-                      style={styles.timeBtn}
-                      onPress={() => {
-                        setPickerTarget('end');
-                        setShowPicker(true);
-                      }}>
-                      <Clock size={16} color={colors.primary} />
-                      <Text style={styles.timeBtnText}>
-                        {newEnd.toLocaleTimeString('pt-BR', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.formActions}>
-                  <TouchableOpacity
-                    onPress={() => setIsAdding(false)}
-                    style={styles.cancelBtn}>
-                    <Text style={styles.cancelBtnText}>Cancelar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handleAddSchedule}
-                    style={styles.saveBtn}>
-                    <Text style={styles.saveBtnText}>Salvar Horário</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.addScheduleBtn}
-                onPress={() => setIsAdding(true)}>
-                <Plus color={colors.primary} size={20} />
-                <Text style={styles.addScheduleText}>Adicionar Intervalo</Text>
-              </TouchableOpacity>
-            )}
-
-            {showPicker && (
-              <DateTimePicker
-                value={pickerTarget === 'start' ? newStart : newEnd}
-                mode="time"
-                is24Hour={true}
-                display="default"
-                onChange={onTimeChange}
-              />
-            )}
+            <SchedulePicker schedules={schedules} onChange={setSchedules} />
           </View>
         </View>
 
@@ -417,7 +240,6 @@ export function DonationStep2() {
   );
 }
 
-// Estilos
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#ffffff' },
   header: {
@@ -481,81 +303,6 @@ const styles = StyleSheet.create({
   },
   tagText: { fontSize: 14, fontWeight: '500', color: '#111827' },
   tagWeight: { fontSize: 12, color: '#6b7280' },
-
-  scheduleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#f3f4f6',
-  },
-  scheduleText: { fontSize: 14, fontWeight: 'bold', color: '#111827' },
-  scheduleSub: { fontSize: 12, color: '#6b7280', marginTop: 2 },
-  addScheduleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 12,
-    backgroundColor: `${colors.primary}05`,
-  },
-  addScheduleText: { color: colors.primary, fontWeight: 'bold', fontSize: 14 },
-
-  // Formulário Inline de Horário
-  addForm: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  formLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6b7280',
-    marginBottom: 8,
-  },
-  dayChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#e5e7eb',
-    marginRight: 8,
-  },
-  dayChipActive: { backgroundColor: colors.primary },
-  dayChipText: { fontSize: 12, fontWeight: '600', color: '#4b5563' },
-  timeRow: { flexDirection: 'row', gap: 12, marginBottom: 15 },
-  timeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  timeBtnText: { fontSize: 14, fontWeight: 'bold', color: '#111827' },
-  formActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
-  cancelBtn: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 8 },
-  cancelBtnText: { color: '#6b7280', fontWeight: 'bold' },
-  saveBtn: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  saveBtnText: { color: '#fff', fontWeight: 'bold' },
-
   textArea: {
     backgroundColor: '#fff',
     borderWidth: 1,

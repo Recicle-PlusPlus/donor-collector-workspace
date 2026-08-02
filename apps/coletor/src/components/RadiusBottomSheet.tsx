@@ -82,7 +82,7 @@ export function RadiusBottomSheet({
             <Slider
               style={styles.slider}
               minimumValue={1}
-              maximumValue={50}
+              maximumValue={15}
               step={1}
               value={tempRadius}
               onValueChange={value => setTempRadius(value)}
@@ -93,7 +93,7 @@ export function RadiusBottomSheet({
 
             <View style={styles.sliderLabels}>
               <Text style={styles.sliderLabelText}>1 km</Text>
-              <Text style={styles.sliderLabelText}>50 km</Text>
+              <Text style={styles.sliderLabelText}>15 km</Text>
             </View>
           </View>
 
