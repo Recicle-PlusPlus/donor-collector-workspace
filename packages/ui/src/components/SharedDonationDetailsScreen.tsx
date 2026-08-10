@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -25,8 +26,8 @@ export interface DonationDetailData {
   schedules?: any[];
   address?: any;
   notes?: string;
-  collector?: { name: string; id: string };
-  donor?: { name: string; id: string };
+  collector?: { name: string; id: string; photo_url?: string | null };
+  donor?: { name: string; id: string; photo_url?: string | null };
   accepted_at?: string;
   completed_at?: string;
   donor_reviewed?: boolean;
@@ -40,6 +41,7 @@ interface SharedDetailsProps {
   onCancel?: () => void;
   onAccept?: () => void;
   onOpenChat?: () => void;
+  onOpenProfile?: () => void;
   onComplete?: () => void;
 }
 
@@ -93,6 +95,7 @@ export const SharedDonationDetailsScreen = ({
   onCancel,
   onAccept,
   onOpenChat,
+  onOpenProfile,
   onComplete,
 }: SharedDetailsProps) => {
   const navigation = useNavigation();
@@ -110,8 +113,10 @@ export const SharedDonationDetailsScreen = ({
   const currentStatus = statusConfig[displayStatus] || statusConfig.pending;
   const completedAt = formatCompletedAt(donation.completed_at);
   const isPending = displayStatus === 'pending';
-  const isAcceptedOrCompleted =
-    displayStatus === 'accepted' || displayStatus === 'completed';
+  const canOpenChat = donation.status === 'accepted';
+  const otherPerson = role === 'donor' ? donation.collector : donation.donor;
+  const otherPersonLabel = role === 'donor' ? 'Coletor' : 'Doador';
+  const otherPersonInitial = otherPerson?.name?.trim().charAt(0).toUpperCase();
 
   const renderMaterials = () => {
     const items = donation.items || [];
@@ -224,34 +229,24 @@ export const SharedDonationDetailsScreen = ({
     if (role === 'donor') {
       const canCancel = isPending || displayStatus === 'accepted';
 
+      if (!canCancel) return null;
+
       return (
         <View
           style={[
             styles.actionBar,
             { paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 20 },
           ]}>
-          {canCancel && (
-            <TouchableOpacity style={styles.btnOutlineError} onPress={onCancel}>
-              <Text style={styles.btnOutlineErrorText}>Cancelar Doação</Text>
-            </TouchableOpacity>
-          )}
-          {isAcceptedOrCompleted && (
-            <TouchableOpacity style={styles.btnPrimary} onPress={onOpenChat}>
-              <MaterialCommunityIcons
-                name="chat-processing-outline"
-                size={20}
-                color="#FFF"
-                style={{ marginRight: 8 }}
-              />
-              <Text style={styles.btnPrimaryText}>Falar com Coletor</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity style={styles.btnOutlineError} onPress={onCancel}>
+            <Text style={styles.btnOutlineErrorText}>Cancelar Doação</Text>
+          </TouchableOpacity>
         </View>
       );
     }
 
-    // COLETOR vendo a doação
     if (role === 'collector') {
+      if (!isPending && displayStatus !== 'accepted') return null;
+
       return (
         <View
           style={[
@@ -264,46 +259,16 @@ export const SharedDonationDetailsScreen = ({
             </TouchableOpacity>
           )}
           {displayStatus === 'accepted' && (
-            <>
-              <TouchableOpacity
-                style={[
-                  styles.btnPrimary,
-                  { flex: 0.3, backgroundColor: '#F1F5F9', marginRight: 12 },
-                ]}
-                onPress={onOpenChat}>
-                <MaterialCommunityIcons
-                  name="chat-processing-outline"
-                  size={24}
-                  color={colors.text}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.btnPrimary,
-                  { flex: 0.7, backgroundColor: '#ca8a04' },
-                ]}
-                onPress={onComplete}>
-                <MaterialCommunityIcons
-                  name="check-circle-outline"
-                  size={20}
-                  color="#FFF"
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={styles.btnPrimaryText}>Finalizar Coleta</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {displayStatus === 'completed' && (
-            <TouchableOpacity style={styles.btnPrimary} onPress={onOpenChat}>
+            <TouchableOpacity
+              style={[styles.btnPrimary, styles.btnComplete]}
+              onPress={onComplete}>
               <MaterialCommunityIcons
-                name="chat-processing-outline"
+                name="check-circle-outline"
                 size={20}
                 color="#FFF"
                 style={{ marginRight: 8 }}
               />
-              <Text style={styles.btnPrimaryText}>Falar com Doador</Text>
+              <Text style={styles.btnPrimaryText}>Finalizar Coleta</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -356,6 +321,70 @@ export const SharedDonationDetailsScreen = ({
               )}
           </View>
         </View>
+
+        {otherPerson && (
+          <TouchableOpacity
+            style={styles.personTab}
+            activeOpacity={0.75}
+            onPress={onOpenProfile}
+            disabled={!onOpenProfile}>
+            {otherPerson.photo_url ? (
+              <Image
+                source={{ uri: otherPerson.photo_url }}
+                style={styles.personAvatar}
+              />
+            ) : (
+              <View style={styles.personAvatarFallback}>
+                {otherPersonInitial ? (
+                  <Text style={styles.personInitial}>{otherPersonInitial}</Text>
+                ) : (
+                  <MaterialCommunityIcons
+                    name="account"
+                    size={24}
+                    color={colors.primary}
+                  />
+                )}
+              </View>
+            )}
+            <View style={styles.personTabContent}>
+              <Text style={styles.personRole}>{otherPersonLabel}</Text>
+              <Text style={styles.personName}>{otherPerson.name}</Text>
+            </View>
+            {onOpenProfile && (
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={24}
+                color={colors.textSecondary}
+              />
+            )}
+          </TouchableOpacity>
+        )}
+
+        {canOpenChat && onOpenChat && (
+          <TouchableOpacity
+            style={styles.chatTab}
+            activeOpacity={0.75}
+            onPress={onOpenChat}>
+            <View style={styles.chatIconBox}>
+              <MaterialCommunityIcons
+                name="chat-processing-outline"
+                size={24}
+                color={colors.primary}
+              />
+            </View>
+            <View style={styles.chatTabContent}>
+              <Text style={styles.chatTabTitle}>
+                Conversa com {role === 'donor' ? 'o coletor' : 'o doador'}
+              </Text>
+              <Text style={styles.chatTabSubtitle}>Abrir conversa</Text>
+            </View>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        )}
 
         {renderMaterials()}
         {renderAddress()}
@@ -416,6 +445,63 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   statusCard: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  personTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFF',
+    elevation: 1,
+  },
+  personAvatar: { width: 48, height: 48, borderRadius: 24 },
+  personAvatarFallback: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ECFDF5',
+  },
+  personInitial: { fontSize: 20, fontWeight: '700', color: colors.primary },
+  personTabContent: { flex: 1 },
+  personRole: {
+    marginBottom: 2,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  personName: { fontSize: 16, fontWeight: '700', color: colors.text },
+  chatTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+    backgroundColor: '#FFF',
+    elevation: 1,
+  },
+  chatIconBox: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: '#ECFDF5',
+  },
+  chatTabContent: { flex: 1 },
+  chatTabTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+  chatTabSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
   iconBox: {
     width: 48,
     height: 48,
@@ -507,4 +593,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   btnPrimaryText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+  btnComplete: { backgroundColor: '#ca8a04' },
 });

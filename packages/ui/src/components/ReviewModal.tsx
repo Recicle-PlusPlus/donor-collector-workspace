@@ -8,10 +8,76 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  ScrollView,
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
 import { useSubmitReview } from '@workspace/db';
+
+type ReviewerRole = 'donor' | 'collector';
+
+interface ReviewCriterion {
+  key: string;
+  label: string;
+  description: string;
+}
+
+const REVIEW_CRITERIA: Record<ReviewerRole, ReviewCriterion[]> = {
+  donor: [
+    {
+      key: 'punctuality',
+      label: 'Pontualidade',
+      description: 'Chegou no período combinado',
+    },
+    {
+      key: 'material_care',
+      label: 'Cuidado com os materiais',
+      description: 'Manuseou os itens com cuidado',
+    },
+    {
+      key: 'communication',
+      label: 'Agilidade nas respostas',
+      description: 'Respondeu e manteve você informado',
+    },
+    {
+      key: 'courtesy',
+      label: 'Cordialidade',
+      description: 'Foi respeitoso durante a coleta',
+    },
+    {
+      key: 'collection_experience',
+      label: 'Experiência com a coleta',
+      description: 'Como foi a coleta de modo geral',
+    },
+  ],
+  collector: [
+    {
+      key: 'material_condition',
+      label: 'Estado do material',
+      description: 'Condição dos itens entregues',
+    },
+    {
+      key: 'description_accuracy',
+      label: 'Material conforme a descrição',
+      description: 'Os itens correspondiam ao que foi informado',
+    },
+    {
+      key: 'pickup_readiness',
+      label: 'Material pronto para retirada',
+      description: 'Os itens estavam separados e organizados',
+    },
+    {
+      key: 'wait_time',
+      label: 'Tempo de espera',
+      description: 'A entrega no local foi ágil',
+    },
+    {
+      key: 'communication',
+      label: 'Agilidade nas respostas',
+      description: 'Respondeu e facilitou a combinação da coleta',
+    },
+  ],
+};
 
 interface ReviewModalProps {
   visible: boolean;
@@ -20,6 +86,7 @@ interface ReviewModalProps {
   title: string;
   donationId: string;
   revieweeId: string;
+  reviewerRole: ReviewerRole;
 }
 
 export const ReviewModal: React.FC<ReviewModalProps> = ({
@@ -29,19 +96,21 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   title,
   donationId,
   revieweeId,
+  reviewerRole,
 }) => {
   const { submitReview } = useSubmitReview();
-  const [rating, setRating] = useState<number>(0);
+  const criteria = REVIEW_CRITERIA[reviewerRole];
+  const [ratings, setRatings] = useState<Record<string, number>>({});
   const [comment, setComment] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!visible) {
-      setRating(0);
+      setRatings({});
       setComment('');
     }
-  }, [visible]);
+  }, [visible, reviewerRole]);
 
   useEffect(() => {
     const showEvent =
@@ -63,15 +132,17 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     };
   }, []);
 
+  const isComplete = criteria.every(criterion => ratings[criterion.key] > 0);
+
   const handleSubmit = async () => {
-    if (rating === 0 || submitting) return;
+    if (!isComplete || submitting) return;
 
     setSubmitting(true);
     try {
       const result = await submitReview({
         donation_id: donationId,
         reviewee_id: revieweeId,
-        rating,
+        criteria_ratings: ratings,
         comment,
       });
 
@@ -80,7 +151,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         return;
       }
 
-      setRating(0);
+      setRatings({});
       setComment('');
       Alert.alert('Sucesso!', 'Sua avaliação foi registrada.');
       onSuccess();
@@ -91,7 +162,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
   const handleClose = () => {
     if (submitting) return;
-    setRating(0);
+    setRatings({});
     setComment('');
     onClose();
   };
@@ -102,53 +173,85 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         <View style={[styles.overlay, { paddingBottom: keyboardHeight }]}>
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={styles.container}>
-              <Text style={styles.title}>{title}</Text>
+              <ScrollView
+                contentContainerStyle={styles.content}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}>
+                <Text style={styles.title}>{title}</Text>
+                <Text style={styles.instructions}>
+                  Avalie todos os itens de 1 a 5 estrelas.
+                </Text>
 
-              {/* Estrelas */}
-              <View style={styles.starsContainer}>
-                {[1, 2, 3, 4, 5].map(star => (
-                  <TouchableOpacity key={star} onPress={() => setRating(star)}>
-                    <Text
-                      style={[
-                        styles.star,
-                        rating >= star && styles.starSelected,
-                      ]}>
-                      ★
+                {criteria.map(criterion => (
+                  <View key={criterion.key} style={styles.criterion}>
+                    <Text style={styles.criterionLabel}>{criterion.label}</Text>
+                    <Text style={styles.criterionDescription}>
+                      {criterion.description}
+                    </Text>
+                    <View style={styles.starsContainer}>
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <TouchableOpacity
+                          key={star}
+                          accessibilityLabel={`${criterion.label}: ${star} estrelas`}
+                          accessibilityRole="button"
+                          onPress={() =>
+                            setRatings(current => ({
+                              ...current,
+                              [criterion.key]: star,
+                            }))
+                          }>
+                          <Text
+                            style={[
+                              styles.star,
+                              ratings[criterion.key] >= star &&
+                                styles.starSelected,
+                            ]}>
+                            ★
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                ))}
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Deixe um comentário (opcional)"
+                  placeholderTextColor="#94A3B8"
+                  value={comment}
+                  onChangeText={setComment}
+                  multiline
+                />
+
+                {!isComplete && (
+                  <Text style={styles.requiredHint}>
+                    Avalie todos os itens para continuar.
+                  </Text>
+                )}
+
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    onPress={handleClose}
+                    disabled={submitting}
+                    style={styles.cancelBtn}>
+                    <Text style={styles.cancelText}>Depois</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleSubmit}
+                    style={[
+                      styles.submitBtn,
+                      (!isComplete || submitting) && styles.submitBtnDisabled,
+                    ]}
+                    disabled={!isComplete || submitting}>
+                    <Text style={styles.submitText}>
+                      {submitting ? 'Enviando...' : 'Avaliar'}
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </View>
-              <TextInput
-                style={styles.input}
-                placeholder="Deixe um comentário (opcional)"
-                placeholderTextColor="#94A3B8"
-                value={comment}
-                onChangeText={setComment}
-                multiline
-              />
+                </View>
 
-              <View style={styles.actions}>
-                <TouchableOpacity
-                  onPress={handleClose}
-                  disabled={submitting}
-                  style={styles.cancelBtn}>
-                  <Text style={styles.cancelText}>Depois</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={handleSubmit}
-                  style={[
-                    styles.submitBtn,
-                    (rating === 0 || submitting) && styles.submitBtnDisabled,
-                  ]}
-                  disabled={rating === 0 || submitting}>
-                  <Text style={styles.submitText}>
-                    {submitting ? 'Enviando...' : 'Avaliar'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.bottomSpacer} />
+                <View style={styles.bottomSpacer} />
+              </ScrollView>
             </View>
           </TouchableWithoutFeedback>
         </View>
@@ -165,27 +268,54 @@ const styles = StyleSheet.create({
   },
   container: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 24,
-    paddingTop: 24,
+    maxHeight: '92%',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+  },
+  content: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
   },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 6,
     textAlign: 'center',
     color: '#1E293B',
+  },
+  instructions: {
+    color: '#64748B',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  criterion: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E2E8F0',
+    paddingBottom: 14,
+    marginBottom: 14,
+  },
+  criterionLabel: {
+    color: '#1E293B',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  criterionDescription: {
+    color: '#64748B',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 2,
   },
   starsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginTop: 6,
   },
   star: {
-    fontSize: 44,
+    fontSize: 34,
     color: '#E2E8F0',
-    marginHorizontal: 4,
+    marginHorizontal: 5,
   },
   starSelected: {
     color: '#F59E0B',
@@ -201,6 +331,13 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     color: '#1E293B',
     fontSize: 16,
+  },
+  requiredHint: {
+    color: '#B45309',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: -12,
+    marginBottom: 16,
   },
   actions: {
     flexDirection: 'row',

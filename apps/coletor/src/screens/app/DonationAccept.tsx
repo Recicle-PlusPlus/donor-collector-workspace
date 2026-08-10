@@ -19,6 +19,10 @@ type RootStackParamList = {
   Main: { refresh?: boolean };
   DonationAccept: { donationId: string };
   Chat: { donationId: string };
+  ChatUserProfile: {
+    userId: string;
+    profileRole: 'donor' | 'collector';
+  };
 };
 
 type AcceptScreenRouteProp = RouteProp<RootStackParamList, 'DonationAccept'>;
@@ -90,6 +94,16 @@ export function DonationAccept() {
   const handleOpenChat = () => {
     navigation.navigate('Chat', { donationId });
   };
+
+  const handleOpenDonorProfile = () => {
+    const donorId = donation?.donor?.id || (donation as any)?.donor_id;
+    if (!donorId) return;
+
+    navigation.navigate('ChatUserProfile', {
+      userId: donorId,
+      profileRole: 'donor',
+    });
+  };
   const handleComplete = async () => {
     Alert.alert(
       'Finalizar Coleta',
@@ -141,13 +155,15 @@ export function DonationAccept() {
         role="collector"
         onAccept={handleAcceptDonation}
         onOpenChat={handleOpenChat}
+        onOpenProfile={handleOpenDonorProfile}
         onComplete={handleComplete}
       />
       <ReviewModal
         visible={showReview}
-        title="Coleta finalizada! Como foi o doador?"
+        title="Entrega finalizada! Como foi sua coleta?"
         donationId={donationId}
         revieweeId={donation?.donor_id}
+        reviewerRole="collector"
         onClose={handleReviewClose}
         onSuccess={handleReviewSuccess}
       />

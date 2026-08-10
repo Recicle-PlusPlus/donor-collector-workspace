@@ -38,6 +38,7 @@ export function ChatScreen() {
     id: '',
     name: 'Carregando...',
     photoUrl: null,
+    role: null as 'donor' | 'collector' | null,
   });
   const [isChatDisabled, setIsChatDisabled] = useState(false);
   const [fetchingDetails, setFetchingDetails] = useState(true);
@@ -80,12 +81,14 @@ export function ChatScreen() {
             id: data.collector_id,
             name: collector.name,
             photoUrl: collector.photo_url,
+            role: 'collector',
           });
         } else if (user.id === data.collector_id && donor) {
           setOtherPerson({
             id: data.donor_id,
             name: donor.name,
             photoUrl: donor.photo_url,
+            role: 'donor',
           });
         }
 
@@ -135,8 +138,11 @@ export function ChatScreen() {
         photoUrl={otherPerson.photoUrl}
         onBack={() => navigation.goBack()}
         onProfilePress={() => {
-          if (otherPerson.id) {
-            navigation.navigate('ChatUserProfile', { userId: otherPerson.id });
+          if (otherPerson.id && otherPerson.role) {
+            navigation.navigate('ChatUserProfile', {
+              userId: otherPerson.id,
+              profileRole: otherPerson.role,
+            });
           }
         }}
       />

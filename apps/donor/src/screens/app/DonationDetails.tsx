@@ -62,6 +62,16 @@ export function DonationDetailsScreen() {
     navigation.navigate('Chat', { donationId });
   };
 
+  const handleOpenCollectorProfile = () => {
+    const collectorId = donation?.collector_id || donation?.collector?.id;
+    if (!collectorId) return;
+
+    navigation.navigate('ChatUserProfile', {
+      userId: collectorId,
+      profileRole: 'collector',
+    });
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <SharedDonationDetailsScreen
@@ -70,13 +80,15 @@ export function DonationDetailsScreen() {
         role="donor"
         onCancel={handleCancel}
         onOpenChat={handleOpenChat}
+        onOpenProfile={handleOpenCollectorProfile}
       />
 
       <ReviewModal
         visible={showReview}
-        title="Seu item foi coletado! Como foi a experiência?"
+        title="Entrega finalizada! Como foi sua coleta?"
         donationId={donationId}
         revieweeId={donation?.collector_id}
+        reviewerRole="donor"
         onClose={() => setShowReview(false)}
         onSuccess={handleReviewSuccess}
       />
