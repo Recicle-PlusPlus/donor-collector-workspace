@@ -1,20 +1,32 @@
 import React from 'react';
 import { Marker } from 'react-native-maps';
-import { StyleSheet } from 'react-native';
 import { DonationCollection } from '../../screens/map/MapScreen';
 
 interface Props {
   collection: DonationCollection;
   isSelected: boolean;
+  isAddedToRoute: boolean;
   onPress: () => void;
 }
 
-export function CollectionMarker({ collection, isSelected, onPress }: Props) {
-  const isInProgress = collection.status === 'accepted';
+export function CollectionMarker({
+  collection,
+  isSelected,
+  isAddedToRoute,
+  onPress,
+}: Props) {
+  const isAccepted = collection.status === 'accepted';
 
-  const markerImage = isInProgress
-    ? require('../../../assets/marker_yellow.png')
-    : require('../../../assets/marker_green.png');
+  let markerSource = require('../../../assets/marker_green.png');
+
+  if (isAddedToRoute) {
+    markerSource = require('../../../assets/marker_orange.png');
+  } else if (isSelected) {
+    markerSource = require('../../../assets/marker_primary.png');
+  } else if (isAccepted) {
+    markerSource = require('../../../assets/marker_yellow.png');
+  }
+  const sizeMultiplier = isSelected || isAddedToRoute ? 1.2 : 1;
 
   return (
     <Marker
@@ -23,16 +35,13 @@ export function CollectionMarker({ collection, isSelected, onPress }: Props) {
         longitude: collection.address.lng,
       }}
       onPress={onPress}
-      image={markerImage}
+      image={markerSource}
       anchor={{ x: 0.5, y: 1 }}
-      style={styles.marker}
+      tracksViewChanges={false}
+      style={{
+        width: 44 * sizeMultiplier,
+        height: 58 * sizeMultiplier,
+      }}
     />
   );
 }
-
-const styles = StyleSheet.create({
-  marker: {
-    width: 44,
-    height: 58,
-  },
-});
