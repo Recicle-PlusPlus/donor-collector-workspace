@@ -45,7 +45,7 @@ export const AccountStatusScreen = ({ status }: AccountStatusScreenProps) => {
         <Text style={styles.description}>
           {isPending
             ? 'Sua solicitação de cadastro como coletor foi recebida com sucesso! Estamos analisando seus dados e em breve liberaremos seu acesso.'
-            : 'Sua conta foi suspensa temporariamente pelo administrador. Entre em contato com o suporte para mais informações.'}
+            : 'Sua conta foi suspensa pelo administrador. Entre em contato com o suporte para mais informações.'}
         </Text>
 
         {/* Botão para deslogar */}
