@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 export default {
   expo: {
-    name: 'donor',
+    name: 'Recicle++',
     slug: 'donor',
     scheme: 'donor',
     version: '1.0.0',
@@ -24,6 +24,7 @@ export default {
         backgroundColor: '#2D7D46',
       },
       package: 'com.recicleplusplus.donor',
+      versionCode: 1,
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       googleServicesFile: './google-services.json',

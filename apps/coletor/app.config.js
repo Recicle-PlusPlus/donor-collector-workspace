@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 export default {
   expo: {
-    name: 'coletor',
+    name: 'Recicle++ Coletor',
     slug: 'coletor',
     version: '1.0.0',
     orientation: 'portrait',
