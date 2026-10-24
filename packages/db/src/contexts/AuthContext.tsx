@@ -5,6 +5,7 @@ import React, {
   useContext,
   useCallback,
   ReactNode,
+  useRef,
 } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../client';
@@ -21,7 +22,11 @@ interface AuthContextProps {
   session: Session | null;
   profile: UserProfile | null;
   isLoading: boolean;
-  signInWithPassword: (email: string, password: string) => Promise<void>;
+  signInWithPassword: (
+    email: string,
+    password: string,
+    allowedRoles?: string[],
+  ) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps>({
@@ -40,6 +45,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profileRefreshKey, setProfileRefreshKey] = useState(0);
 
   const { expoPushToken, saveTokenToDatabase } = usePushNotifications();
+  const authLockRef = useRef(false);
+
   useEffect(() => {
     if (user?.id && expoPushToken) {
       saveTokenToDatabase(user.id, expoPushToken);
@@ -136,33 +143,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [fetchProfile, user?.id, profileRefreshKey]);
 
   const signInWithPassword = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, allowedRoles?: string[]) => {
       console.log('[AuthContext][Login] Iniciando signInWithPassword.');
+      try {
+        authLockRef.current = true;
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-      if (error) {
-        console.log(
-          '[AuthContext][Login] Falha ao autenticar no Supabase:',
-          error.message,
+        if (error) throw error;
+
+        if (allowedRoles && data.user) {
+          const { data: userData, error: roleError } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', data.user.id)
+            .single();
+
+          if (roleError || !userData) {
+            await supabase.auth.signOut();
+            throw new Error('Perfil de usuário não encontrado.');
+          }
+
+          if (!allowedRoles.includes(userData.role)) {
+            await supabase.auth.signOut();
+            throw new Error(
+              'Acesso negado: Essa conta foi registrada no outro aplicativo Recicle (doador/coletor). Verifique o app em que você está realizando o login, cada app precisa de uma conta própria.',
+            );
+          }
+        }
+
+        syncSessionState(
+          data.session ?? null,
+          'login',
+          data.user ?? data.session?.user ?? null,
         );
-        throw error;
+      } finally {
+        setTimeout(() => {
+          authLockRef.current = false;
+        }, 500);
       }
-
-      console.log(
-        `[AuthContext][Login] Login bem-sucedido. Sessao imediata: ${Boolean(
-          data.session,
-        )}, usuario: ${data.user?.id ?? 'sem-id'}`,
-      );
-
-      syncSessionState(
-        data.session ?? null,
-        'login',
-        data.user ?? data.session?.user ?? null,
-      );
     },
     [syncSessionState],
   );
@@ -204,12 +226,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log(
-          `[AuthContext] onAuthStateChange disparado: ${event}. Usuario: ${session?.user?.id ?? 'null'}`,
-        );
+        if (authLockRef.current) return;
+
+        console.log(`[AuthContext] onAuthStateChange disparado: ${event}`);
 
         if (event === 'TOKEN_REFRESHED')
-          console.log('[AuthContext - INFO] Token JWT renovado com sucesso.');
+          console.log('[AuthContext - INFO] Token renovado.');
 
         if (event === 'INITIAL_SESSION') return;
 

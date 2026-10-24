@@ -17,12 +17,18 @@ import { ErrorModal } from '../components/ErrorModal';
 
 interface LoginScreenProps {
   onNavigateToRegister: () => void;
-  onLogin: (email: string, password: string) => Promise<void>;
+  onLogin: (
+    email: string,
+    password: string,
+    allowedRoles?: string[],
+  ) => Promise<void>;
+  allowedRoles: Array<'donor' | 'collector' | 'manager'>;
 }
 
 export const LoginScreen = ({
   onNavigateToRegister,
   onLogin,
+  allowedRoles,
 }: LoginScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,10 +64,9 @@ export const LoginScreen = ({
     loginAttemptRef.current += 1;
 
     const attemptId = loginAttemptRef.current;
-    console.log(`[Login] Tentativa ${attemptId} iniciada.`);
 
     try {
-      await onLogin(email, password);
+      await onLogin(email, password, allowedRoles);
       console.log(`[Login] Tentativa ${attemptId} concluída com sucesso.`);
     } catch (e: any) {
       console.log(`[Login] Tentativa ${attemptId} falhou:`, e.message || e);

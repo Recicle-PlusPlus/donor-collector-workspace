@@ -11,6 +11,7 @@ export function Login() {
     <LoginScreen
       onNavigateToRegister={() => navigation.navigate('Sign')}
       onLogin={signInWithPassword}
+      allowedRoles={['donor', 'manager']}
     />
   );
 }
