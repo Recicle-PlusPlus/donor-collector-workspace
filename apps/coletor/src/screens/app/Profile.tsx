@@ -11,7 +11,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Snackbar } from 'react-native-paper';
 import { useAuth } from '@workspace/db/src/contexts/AuthContext';
-
 import { supabase } from '@workspace/db';
 import {
   colors,
@@ -20,6 +19,7 @@ import {
   InputIconMask,
   ButtonDefault,
   UserReviewsSection,
+  DeleteAccountButton,
 } from '@workspace/ui';
 
 export function Profile() {
@@ -257,6 +257,8 @@ export function Profile() {
             <Text style={styles.accountInfoValue}>{memberSince}</Text>
           </View>
         </View>
+
+        <DeleteAccountButton />
       </ScrollView>
 
       <Snackbar

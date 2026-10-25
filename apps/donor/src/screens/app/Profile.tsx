@@ -25,6 +25,7 @@ import {
   InputIconMask,
   ButtonDefault,
   UserReviewsSection,
+  DeleteAccountButton,
 } from '@workspace/ui';
 
 export function Profile() {
@@ -369,6 +370,8 @@ export function Profile() {
             <Text style={styles.accountInfoValue}>{memberSince}</Text>
           </View>
         </View>
+
+        <DeleteAccountButton />
       </ScrollView>
 
       <Snackbar

@@ -5,6 +5,7 @@ export * from './components/Loading';
 export * from './components/ErrorModal';
 export * from './components/NotificationPermissionDialog';
 export * from './components/UserReviewsSection';
+export * from './components/DeleteAccountButton';
 
 export * from './theme/colors';
 export * from './utils/donation';
