@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../client';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -20,57 +21,30 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user) return;
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
 
-    const fetchNotifications = async () => {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const fetchNotifications = async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(50);
 
-      if (!error && data) {
-        setNotifications(data);
-      }
-      setLoading(false);
-    };
+        if (!error && data) {
+          setNotifications(data);
+        }
+        setLoading(false);
+      };
 
-    fetchNotifications();
+      fetchNotifications();
 
-    // Listener
-    const subscription = supabase
-      .channel('realtime-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // ouve INSERTs e UPDATEs
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        payload => {
-          if (payload.eventType === 'INSERT') {
-            setNotifications(prev => [
-              payload.new as NotificationItem,
-              ...prev,
-            ]);
-          } else if (payload.eventType === 'UPDATE') {
-            setNotifications(prev =>
-              prev.map(n =>
-                n.id === payload.new.id ? (payload.new as NotificationItem) : n,
-              ),
-            );
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [user]);
+      return () => {};
+    }, [user])
+  );
 
   const markAsRead = async (id: string) => {
     setNotifications(prev =>

@@ -3,11 +3,11 @@ import {
   View,
   StyleSheet,
   KeyboardAvoidingView,
-  Platform,
   FlatList,
   ActivityIndicator,
   Keyboard,
   ImageBackground,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -18,6 +18,7 @@ import { ChatBubble } from '../components/chat/ChatBubble';
 import { ChatInput } from '../components/chat/ChatInput';
 import { colors } from '../theme/colors';
 import { useAuth } from '@workspace/db/src/contexts/AuthContext';
+import { ReportModal } from '../components/ReportModal';
 
 export function ChatScreen() {
   const [hasKeyboardOpened, setHasKeyboardOpened] = useState(false);
@@ -43,7 +44,10 @@ export function ChatScreen() {
   const [isChatDisabled, setIsChatDisabled] = useState(false);
   const [fetchingDetails, setFetchingDetails] = useState(true);
 
-  // Montar o cabeçalho e checar o status da doação
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+  const [donationStatus, setDonationStatus] = useState<string>('');
+
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
       setHasKeyboardOpened(true);
@@ -68,8 +72,8 @@ export function ChatScreen() {
 
       if (rawData) {
         const data = rawData as any;
+        setDonationStatus(data.status);
 
-        // Garante a extração correta independente se vier como Objeto ou Array de 1 item
         const collector = Array.isArray(data.collector)
           ? data.collector[0]
           : data.collector;
@@ -131,6 +135,117 @@ export function ChatScreen() {
     );
   }
 
+  const submitReport = async (reason: string) => {
+    if (!user?.id || !otherPerson.id) return;
+    setIsReporting(true);
+
+    const { error } = await supabase.from('user_reports').insert({
+      reporter_id: user.id,
+      reported_id: otherPerson.id,
+      donation_id: donationId,
+      reason: reason,
+    });
+
+    setIsReporting(false);
+    setReportModalVisible(false);
+
+    if (error) {
+      Alert.alert('Erro', 'Não foi possível enviar a denúncia.');
+    } else {
+      Alert.alert(
+        'Denúncia Enviada',
+        'Sua denúncia foi registrada. Você deseja também BLOQUEAR este usuário e cancelar a coleta atual?',
+        [
+          { text: 'Não é necessário', style: 'cancel' },
+          {
+            text: 'Sim, Bloquear',
+            style: 'destructive',
+            onPress: submitBlockOnly,
+          },
+        ],
+      );
+    }
+  };
+
+  const submitBlockOnly = async () => {
+    if (!user?.id || !otherPerson.id) return;
+
+    await supabase.from('user_blocks').insert({
+      blocker_id: user.id,
+      blocked_id: otherPerson.id,
+    });
+
+    if (donationStatus === 'accepted' || donationStatus === 'pending') {
+      await supabase
+        .from('donations')
+        .update({ status: 'cancelled' })
+        .eq('id', donationId);
+      navigation.navigate('Main', {
+        refresh: true,
+        snackbarMessage: 'Usuário bloqueado e coleta cancelada.',
+      });
+    } else {
+      navigation.navigate('Main', {
+        refresh: true,
+        snackbarMessage: 'Usuário bloqueado para futuras coletas.',
+      });
+    }
+  };
+
+  const handleOptionsPress = () => {
+    Alert.alert('Opções de Segurança', 'O que deseja fazer?', [
+      { text: 'Denunciar', onPress: () => setReportModalVisible(true) },
+      {
+        text: 'Bloquear e Cancelar Coleta',
+        style: 'destructive',
+        onPress: startBlockProcess,
+      },
+      { text: 'Voltar', style: 'cancel' },
+    ]);
+  };
+
+  const startBlockProcess = () => {
+    const alertMessage =
+      donationStatus === 'accepted' || donationStatus === 'pending'
+        ? 'A coleta atual será CANCELADA e vocês não poderão mais interagir. Tem certeza?'
+        : 'Vocês não poderão mais interagir ou ver as coletas um do outro no futuro. Tem certeza?';
+
+    Alert.alert('Bloquear Usuário', alertMessage, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Sim, Bloquear',
+        style: 'destructive',
+        onPress: async () => {
+          await supabase
+            .from('user_blocks')
+            .insert({ blocker_id: user?.id, blocked_id: otherPerson.id });
+
+          if (donationStatus === 'accepted' || donationStatus === 'pending') {
+            await supabase
+              .from('donations')
+              .update({ status: 'cancelled' })
+              .eq('id', donationId);
+          }
+
+          Alert.alert(
+            'Usuário Bloqueado',
+            'O comportamento deste usuário violou nossas regras? Deseja enviar uma denúncia para a equipe?',
+            [
+              {
+                text: 'Não',
+                onPress: () => navigation.navigate('Main', { refresh: true }),
+              },
+              {
+                text: 'Sim, Denunciar',
+                onPress: () => setReportModalVisible(true),
+              },
+            ],
+          );
+        },
+      },
+    ]);
+  };
+
   return (
     <KeyboardAvoidingView style={styles.container} behavior="height">
       <ChatHeader
@@ -145,6 +260,7 @@ export function ChatScreen() {
             });
           }
         }}
+        onOptionsPress={handleOptionsPress}
       />
 
       <ImageBackground
@@ -167,6 +283,18 @@ export function ChatScreen() {
           <ChatInput onSend={sendMessage} disabled={isChatDisabled} />
         </View>
       </ImageBackground>
+
+      <ReportModal
+        visible={reportModalVisible}
+        title={`Denunciar ${otherPerson.name}`}
+        subtitle="Por que você está denunciando este usuário no chat? Detalhe o ocorrido (mínimo 20 caracteres)."
+        isLoading={isReporting}
+        onClose={() => {
+          setReportModalVisible(false);
+          if (isChatDisabled) navigation.navigate('Main', { refresh: true });
+        }}
+        onSubmit={submitReport}
+      />
     </KeyboardAvoidingView>
   );
 }

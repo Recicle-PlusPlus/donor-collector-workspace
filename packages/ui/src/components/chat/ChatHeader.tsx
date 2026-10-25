@@ -1,4 +1,3 @@
-// packages/ui/src/components/chat/ChatHeader.tsx
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,6 +8,7 @@ export interface ChatHeaderProps {
   photoUrl?: string | null;
   onBack: () => void;
   onProfilePress?: () => void;
+  onOptionsPress?: () => void;
 }
 
 export const ChatHeader = ({
@@ -16,6 +16,7 @@ export const ChatHeader = ({
   photoUrl,
   onBack,
   onProfilePress,
+  onOptionsPress,
 }: ChatHeaderProps) => {
   return (
     <View style={styles.container}>
@@ -47,6 +48,17 @@ export const ChatHeader = ({
           {name}
         </Text>
       </TouchableOpacity>
+
+      {/* Botão de Opções */}
+      {onOptionsPress && (
+        <TouchableOpacity onPress={onOptionsPress} style={styles.optionsButton}>
+          <MaterialCommunityIcons
+            name="dots-vertical"
+            size={24}
+            color={colors.textLight}
+          />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -78,4 +90,5 @@ const styles = StyleSheet.create({
   },
   avatar: { width: '100%', height: '100%', borderRadius: 20 },
   name: { color: colors.textLight, fontSize: 18, fontWeight: 'bold', flex: 1 },
+  optionsButton: { padding: 5 },
 });

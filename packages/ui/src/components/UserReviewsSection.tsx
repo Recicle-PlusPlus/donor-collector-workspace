@@ -7,10 +7,21 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useUserReviews, UserReview, ReviewProfileRole } from '@workspace/db';
+import {
+  useUserReviews,
+  UserReview,
+  ReviewProfileRole,
+  supabase,
+} from '@workspace/db';
 import { colors } from '../theme/colors';
+import { useAuth } from '@workspace/db/src/contexts/AuthContext';
+import { ReportModal } from './ReportModal';
 
 interface CriterionSummary {
   key: string;
@@ -82,8 +93,17 @@ export function UserReviewsSection({
   userId,
   profileRole,
 }: UserReviewsSectionProps) {
+  const { user } = useAuth();
   const [visible, setVisible] = useState(false);
   const [expandedReviewId, setExpandedReviewId] = useState<string | null>(null);
+
+  const [reportedItems, setReportedItems] = useState<Set<string>>(new Set());
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportingReview, setReportingReview] = useState<UserReview | null>(
+    null,
+  );
+  const [isReporting, setIsReporting] = useState(false);
+
   const criteria = PROFILE_CRITERIA[profileRole];
   const {
     averageRating,
@@ -103,8 +123,41 @@ export function UserReviewsSection({
     loadReviews(true);
   };
 
+  const submitReviewReport = async (reason: string) => {
+    if (!user?.id || !reportingReview) return;
+    setIsReporting(true);
+
+    const { error: reportError } = await supabase.from('user_reports').insert({
+      reporter_id: user.id,
+      reported_id: reportingReview.reviewer_id,
+      donation_id: reportingReview.donation_id,
+      reason: reason,
+    });
+
+    setIsReporting(false);
+
+    if (reportError) {
+      Alert.alert('Erro', 'Não foi possível enviar a denúncia.');
+    } else {
+      setReportModalVisible(false);
+      setReportedItems(prev => new Set(prev).add(reportingReview.donation_id));
+
+      Alert.alert(
+        'Recebemos sua denúncia',
+        'Nossa equipe analisará este comentário em breve. Obrigado por ajudar a manter a comunidade segura.',
+      );
+    }
+  };
+
+  const handleOpenReport = (review: UserReview) => {
+    setReportingReview(review);
+    setReportModalVisible(true);
+  };
+
   const renderReview = ({ item }: { item: UserReview }) => {
     const expanded = expandedReviewId === item.donation_id;
+    const isReported = reportedItems.has(item.donation_id);
+
     const criterionAverage =
       criteria.reduce(
         (total, criterion) =>
@@ -114,9 +167,44 @@ export function UserReviewsSection({
 
     return (
       <View style={styles.reviewCard}>
-        <Text style={styles.reviewAuthor}>
-          {item.reviewer_name?.trim() || 'Usuário'}
-        </Text>
+        <View style={styles.reviewHeaderRow}>
+          <Text style={styles.reviewAuthor}>
+            {item.reviewer_name?.trim() || 'Usuário'}
+          </Text>
+
+          {user?.id !== item.reviewer_id && (
+            <TouchableOpacity
+              onPress={() => !isReported && handleOpenReport(item)}
+              disabled={isReported}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              {isReported ? (
+                <>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: '#EF4444',
+                      fontWeight: 'bold',
+                    }}>
+                    Denunciado
+                  </Text>
+                  <MaterialCommunityIcons
+                    name="flag"
+                    size={18}
+                    color="#EF4444"
+                  />
+                </>
+              ) : (
+                <MaterialCommunityIcons
+                  name="flag-outline"
+                  size={18}
+                  color="#94A3B8"
+                />
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+
         <View style={styles.reviewMeta}>
           {renderStars(criterionAverage, 14)}
           <Text style={styles.metaSeparator}>•</Text>
@@ -280,6 +368,15 @@ export function UserReviewsSection({
           />
         </View>
       </Modal>
+
+      <ReportModal
+        visible={reportModalVisible}
+        title="Denunciar Avaliação"
+        subtitle="Por que você está denunciando esta avaliação? Detalhe o motivo para nossa equipe analisar."
+        isLoading={isReporting}
+        onClose={() => setReportModalVisible(false)}
+        onSubmit={submitReviewReport}
+      />
     </>
   );
 }
@@ -358,11 +455,30 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  reviewAuthor: {
+  reviewHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 5,
+  },
+  reviewAuthor: {
     fontSize: 14,
     fontWeight: '700',
     color: '#1F2937',
+  },
+  reportBadgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  reportedText: {
+    fontSize: 12,
+    color: '#EF4444',
+    fontWeight: '600',
   },
   reviewMeta: {
     flexDirection: 'row',
@@ -429,4 +545,88 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   footerLoader: { padding: 18 },
+
+  // === ESTILOS DO MODAL DE DENÚNCIA ===
+  reportOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  reportCard: {
+    backgroundColor: '#FFF',
+    width: '100%',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  reportTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1E293B',
+  },
+  reportDescription: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 15,
+  },
+  reportInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    color: '#1E293B',
+    minHeight: 100,
+  },
+  charCount: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: 'right',
+    marginTop: 6,
+    marginBottom: 20,
+  },
+  reportActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  reportCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  reportCancelText: {
+    color: '#475569',
+    fontWeight: '600',
+  },
+  reportSubmitBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  reportSubmitBtnDisabled: {
+    backgroundColor: '#FCA5A5',
+  },
+  reportSubmitText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
 });
