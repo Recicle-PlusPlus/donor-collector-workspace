@@ -20,6 +20,7 @@ import {
   ButtonDefault,
   UserReviewsSection,
   DeleteAccountButton,
+  compressImage,
 } from '@workspace/ui';
 
 export function Profile() {
@@ -68,7 +69,7 @@ export function Profile() {
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.6,
+      quality: 1,
     });
 
     if (result.canceled || !user) return;
@@ -76,15 +77,15 @@ export function Profile() {
     setLoading(true);
     try {
       const asset = result.assets[0];
-      const fileExt = asset.uri.split('.').pop();
-      const filePath = `${user.id}/profile.${fileExt}`;
+      const compressedUri = await compressImage(asset.uri, asset.width, 512);
+      const filePath = `${user.id}/profile.jpg`;
 
       const formData = new FormData();
       formData.append('file', {
-        uri: asset.uri,
-        name: `photo.${fileExt}`,
-        type: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
-      } as any);
+      uri: compressedUri,
+       name: 'photo.jpg',
+       type: 'image/jpeg',
+} as any);
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
