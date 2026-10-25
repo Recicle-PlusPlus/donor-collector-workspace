@@ -14,6 +14,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { supabase } from '@workspace/db';
 import { colors } from './../theme/colors';
 import { ErrorModal } from '../components/ErrorModal';
+import { LegalModal } from '../components/LegalModal';
+import { LEGAL_TEXTS } from '../constants/legalTexts';
 
 interface RegisterScreenProps {
   role: 'donor' | 'collector';
@@ -44,6 +46,10 @@ export const RegisterScreen = ({
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | null>(
+    null,
+  );
 
   const updateForm = (field: string, value: string) => {
     setForm(p => ({ ...p, [field]: value }));
@@ -59,6 +65,13 @@ export const RegisterScreen = ({
     if (form.password.length < 6) err.password = 'Mínimo de 6 caracteres';
     if (form.confirmPassword !== form.password)
       err.confirmPassword = 'As senhas não coincidem';
+    if (!agreedToTerms) {
+      setGlobalError(
+        'Você precisa aceitar os Termos de Uso e a Política de Privacidade para continuar.',
+      );
+      return;
+    }
+
     setErrors(err);
 
     if (Object.keys(err).length > 0) return;
@@ -95,7 +108,7 @@ export const RegisterScreen = ({
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}>
       {globalError && (
         <ErrorModal
@@ -107,7 +120,8 @@ export const RegisterScreen = ({
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={styles.logoText}>Recicle++</Text>
           <Text style={styles.subtitleText}>Faça a diferença, recicle!</Text>
@@ -273,10 +287,45 @@ export const RegisterScreen = ({
               )}
             </View>
 
+            <View style={styles.termsContainer}>
+              <TouchableOpacity
+                style={styles.checkboxTouch}
+                activeOpacity={0.8}
+                onPress={() => setAgreedToTerms(!agreedToTerms)}>
+                <MaterialCommunityIcons
+                  name={
+                    agreedToTerms ? 'checkbox-marked' : 'checkbox-blank-outline'
+                  }
+                  size={24}
+                  color={agreedToTerms ? colors.primary : colors.textSecondary}
+                />
+              </TouchableOpacity>
+
+              <Text style={styles.termsText}>
+                Eu concordo com os{' '}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => setActiveModal('terms')}>
+                  Termos de Uso
+                </Text>{' '}
+                e a{' '}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => setActiveModal('privacy')}>
+                  Política de Privacidade
+                </Text>
+                .
+              </Text>
+            </View>
+
             <TouchableOpacity
-              style={[styles.submitBtn, { marginTop: 10 }]}
+              style={[
+                styles.submitBtn,
+                { marginTop: 10 },
+                !agreedToTerms && styles.submitBtnDisabled,
+              ]}
               onPress={handleRegister}
-              disabled={loading}>
+              disabled={loading || !agreedToTerms}>
               {loading ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
@@ -293,6 +342,20 @@ export const RegisterScreen = ({
           </View>
         </View>
       </ScrollView>
+
+      <LegalModal
+        visible={activeModal === 'terms'}
+        title="Termos de Uso"
+        content={LEGAL_TEXTS.termsOfUse}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <LegalModal
+        visible={activeModal === 'privacy'}
+        title="Política de Privacidade"
+        content={LEGAL_TEXTS.privacyPolicy}
+        onClose={() => setActiveModal(null)}
+      />
     </KeyboardAvoidingView>
   );
 };
@@ -400,4 +463,29 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 30 },
   footerText: { color: '#64748B', fontSize: 14 },
   footerLink: { color: colors.primary, fontSize: 14, fontWeight: 'bold' },
+
+  termsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+    paddingHorizontal: 4,
+  },
+  termsText: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: colors.primary,
+    fontWeight: 'bold',
+  },
+  submitBtnDisabled: {
+    backgroundColor: '#94A3B8',
+  },
+  checkboxTouch: {
+    padding: 4,
+    marginRight: 6,
+  },
 });
