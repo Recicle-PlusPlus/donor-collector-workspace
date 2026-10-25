@@ -17,6 +17,12 @@ export default {
     ios: {
       supportsTablet: true,
     },
+    updates: {
+      url: 'https://u.expo.dev/62936b4c-b461-4016-8454-8fb42283e965',
+    },
+    runtimeVersion: {
+      policy: 'appVersion',
+    },
     android: {
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
