@@ -9,6 +9,7 @@ export * from './components/DeleteAccountButton';
 
 export * from './theme/colors';
 export * from './utils/donation';
+export * from './utils/compressImage';
 
 export * from './components/chat/ChatBubble';
 export * from './components/chat/ChatInput';
