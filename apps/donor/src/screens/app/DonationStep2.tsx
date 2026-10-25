@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   TextInput,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
@@ -40,6 +42,7 @@ export function DonationStep2() {
   const [pendingSuccessNavigation, setPendingSuccessNavigation] =
     useState(false);
 
+  const scrollViewRef = useRef<ScrollView>(null);
   const totalWeight = materials.reduce((acc, m) => acc + Number(m.weight), 0);
 
   const executeDonation = async () => {
@@ -117,7 +120,9 @@ export function DonationStep2() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <NotificationPermissionDialog
         forceOpen={showPermissionDialog}
         onForceClose={() => {
@@ -148,7 +153,10 @@ export function DonationStep2() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled">
         {/* Endereço Resumo */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -217,6 +225,11 @@ export function DonationStep2() {
             numberOfLines={4}
             value={notes}
             onChangeText={setNotes}
+            onFocus={() => {
+              setTimeout(() => {
+                scrollViewRef.current?.scrollToEnd({ animated: true });
+              }, 300);
+            }}
           />
         </View>
       </ScrollView>
@@ -236,7 +249,7 @@ export function DonationStep2() {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
