@@ -29,6 +29,7 @@ export default {
         backgroundColor: '#ffffff',
       },
       package: 'com.recicleplusplus.collector',
+      versionCode: 2,
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION'],
